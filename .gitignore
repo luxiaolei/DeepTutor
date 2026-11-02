@@ -294,3 +294,10 @@ dmypy.json
 *.mp3
 *.wav
 *.ogg
+
+# ============================================
+# KidsAI local-only files (never commit)
+# ============================================
+.secrets/
+*.local
+setup.local.json
