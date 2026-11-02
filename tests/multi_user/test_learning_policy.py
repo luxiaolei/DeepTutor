@@ -179,3 +179,32 @@ def test_learner_preset_falls_back_to_the_conservative_policy(mu_isolated_root, 
         "material_ids": [],
         "extensions": [],
     }
+
+
+def test_learner_may_visualize_with_the_maker_persona_and_no_tools(
+    mu_isolated_root, seed_user, as_user
+):
+    learner = _seed_learner(seed_user, "maker")
+    grant = _policy_grant()
+    grant["learning_policy"]["locked_persona"] = "zaowu"
+    grant["learning_policy"]["allowed_capabilities"] = ["chat", "visualize"]
+    grant["learning_policy"]["default_capability"] = "chat"
+    validate_grant(normalize_grant(learner["id"], grant))
+    save_grant(learner["id"], grant)
+
+    with as_user(learner["id"], username="maker"):
+        result = apply_learning_policy(
+            {"capability": "visualize", "persona": "friend", "tools": ["exec"]}
+        )
+
+    assert result["persona"] == "zaowu"
+    assert result["tools"] == []
+    assert result["enabled_tools"] == []
+
+
+def test_learner_persona_must_still_be_allowlisted(mu_isolated_root):
+    grant = normalize_grant("u_student", _policy_grant())
+    grant["learning_policy"]["locked_persona"] = "friend"
+
+    with pytest.raises(ValueError, match="locked_persona"):
+        validate_grant(grant)

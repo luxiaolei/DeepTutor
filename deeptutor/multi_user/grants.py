@@ -19,9 +19,14 @@ from .paths import SYSTEM_ROOT, ensure_system_dirs
 
 GRANTS_DIR = SYSTEM_ROOT / "grants"
 
-LEARNING_CAPABILITIES = {"chat", "immersive_reading"}
+# KidsAI: learners may also use ``visualize``. Its output is rendered in an
+# ``<iframe sandbox="allow-scripts">`` (no same-origin, no forms/popups), so a
+# child can turn an idea into a runnable page without exec or network tools.
+LEARNING_CAPABILITIES = {"chat", "immersive_reading", "visualize"}
 LEARNING_AGE_BANDS = {"6-8", "9-12", "13-15"}
-LEARNING_PERSONAS = {"teacher"}
+# KidsAI: ``zaowu`` is the "maker assistant" persona (see PERSONA.md in the
+# learner/admin workspace). ``teacher`` stays the default for new learners.
+LEARNING_PERSONAS = {"teacher", "zaowu"}
 LEARNING_SURFACES = {"books", "chat", "reading"}
 _EXTENSION_ID_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 _GRANT_THREAD_LOCKS: dict[Path, threading.Lock] = {}
