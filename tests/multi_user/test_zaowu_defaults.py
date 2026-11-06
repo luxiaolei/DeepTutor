@@ -165,6 +165,7 @@ def test_age_density_maps_product_ages_onto_builtin_bands():
     assert guidance_density(None, "13-15") == "older"
     early = guidance_block(5, "6-8")
     assert "还不认字" in early
+    assert "你想先做哪一个" in early
     assert "会跳的小球" in early
     assert "打字" in early
     middle = guidance_block(8, "6-8")

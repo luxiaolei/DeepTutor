@@ -342,7 +342,7 @@ export function SidebarShell({
           {bodySlot ? bodySlot(true) : <CategoryBody nav={categoryNav} collapsed sessions={null} />}
         </div>
 
-        {footerOverride ? footerOverride(true) : (
+        {footerOverride ? footerOverride(true) : learnerHome ? null : (
           <div className="dt-rail-foot">
             <Tooltip label={t("navigation.newChat")} side="right" shortcut={SHORTCUTS.newChat}>
               <Link prefetch={false} href="/chat" onClick={handleHomeClick} aria-label={t("navigation.newChat")} className="dt-nav-icon">
@@ -437,7 +437,7 @@ export function SidebarShell({
       </div>
 
       {/* Secondary nav + footer */}
-      {footerOverride ? footerOverride(false) : (
+      {footerOverride ? footerOverride(false) : learnerHome ? null : (
         <div className="dt-sidebar-footer">
           <Tooltip label={t("navigation.newChat")} side="top" shortcut={SHORTCUTS.newChat} as="div" className="block w-full">
             <Link prefetch={false} href="/chat" onClick={handleHomeClick} className="dt-new-conversation">

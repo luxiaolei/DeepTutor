@@ -1150,15 +1150,6 @@ export default memo(function ChatComposer({
           onOpenChange: onPersonaSelectorOpenChange,
         }
       : undefined;
-  const learnerAnswer: AnswerModeProps | undefined = learnerChrome
-    ? {
-        persona: {
-          value: personaSelection ?? "",
-          onChange: () => undefined,
-          locked: lockedPersona || "zaowu",
-        },
-      }
-    : undefined;
   // Working with partners: DeepTutor still answers, having asked them first.
   const partnerLinks: PartnerLinkProps | undefined =
     onSelectAgent || onSelectPartner || onSelectPartnerGroup
@@ -1210,11 +1201,11 @@ export default memo(function ChatComposer({
   // while the turn is waiting on the user, where sending IS how it continues.
   const handleSendButtonClick = useCallback(() => {
     if (streamingBlocksSend) {
-      onCancelStreaming();
+      if (!learnerChrome) onCancelStreaming();
       return;
     }
     handleManualSend();
-  }, [handleManualSend, streamingBlocksSend, onCancelStreaming]);
+  }, [handleManualSend, learnerChrome, streamingBlocksSend, onCancelStreaming]);
 
   const sendLabel =
     sendState === "streaming"
@@ -1406,7 +1397,7 @@ export default memo(function ChatComposer({
           <div className="px-3 pb-2 pt-0.5">
             <div className={styles.toolbar}>
               <div className={styles.context}>
-                {
+                {!learnerChrome && (
                   <ComposerResources
                     selectedCount={contextTreeItems.length}
                     items={resourceItems}
@@ -1441,9 +1432,9 @@ export default memo(function ChatComposer({
                       />
                     )}
                   />
-                }
+                )}
 
-                {showCapabilityChip && !modeInTray && (
+                {showCapabilityChip && !modeInTray && !learnerChrome && (
                   <div className="relative min-w-0 max-w-full">
                     <Tooltip label={capabilityLabel(activeCap)} suppressed={capMenuOpen} side="top">
                       <button
@@ -1623,7 +1614,7 @@ export default memo(function ChatComposer({
                     place (both stacked in the same grid cell) and the progress
                     ring moves to the perimeter, where it can spin without
                     fighting the square for the same space. */}
-                {queuing && hasIntent ? (
+                {queuing && hasIntent && !learnerChrome ? (
                   <Tooltip label={t("Stop generating")} side="top">
                     <button
                       type="button"
@@ -1636,6 +1627,7 @@ export default memo(function ChatComposer({
                     </button>
                   </Tooltip>
                 ) : null}
+                {learnerChrome && sendState === "streaming" ? null : (
                 <Tooltip label={sendTitle} side="top">
                   <button
                     type="button"
@@ -1669,28 +1661,24 @@ export default memo(function ChatComposer({
                     />
                   </button>
                 </Tooltip>
+                )}
               </div>
             </div>
           </div>
         </div>
-        {(learnerChrome ? learnerAnswer : trayMode) ||
-        (!learnerChrome && resourceCatalog && resourceSelection && onResourceSelectionChange) ||
-        (!learnerChrome && trayCreate) ||
-        (learnerChrome ? learnerAnswer : answerMode) ||
-        (!learnerChrome && partnerLinks) ||
-        trayEnd ? (
+        {!learnerChrome && (trayMode || (resourceCatalog && resourceSelection && onResourceSelectionChange) || trayCreate || answerMode || partnerLinks || trayEnd) ? (
           <ComposerTray
             controls={controls}
             placement={hasMessages || docked ? "up" : "down"}
-            mode={learnerChrome ? undefined : trayMode}
+            mode={trayMode}
             resources={
-              !learnerChrome && resourceCatalog && resourceSelection && onResourceSelectionChange
+              resourceCatalog && resourceSelection && onResourceSelectionChange
                 ? { catalog: resourceCatalog, selection: resourceSelection, onChange: onResourceSelectionChange }
                 : undefined
             }
-            create={learnerChrome ? undefined : trayCreate}
-            partners={learnerChrome ? undefined : partnerLinks}
-            answer={learnerChrome ? learnerAnswer : answerMode}
+            create={trayCreate}
+            partners={partnerLinks}
+            answer={answerMode}
             end={trayEnd}
           />
         ) : null}

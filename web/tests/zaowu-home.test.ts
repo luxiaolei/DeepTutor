@@ -171,6 +171,8 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
     "utf8",
   );
   assert.match(list, /<MakerChoiceRow/);
+  assert.match(list, /看别的/);
+  assert.match(choices, /ellipse cx="20" cy="28"/);
   assert.match(workspace, /makerDensity=\{learnerHome \? makerDensity : undefined\}/);
   assert.match(workspace, /speakMaker\(/);
   assert.match(workspace, /overflow-x-hidden overflow-y-auto px-6 py-6/);

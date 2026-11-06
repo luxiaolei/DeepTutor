@@ -2543,8 +2543,8 @@ export const ChatMessageList = memo(function ChatMessageList({
                 msg={msg}
                 index={i}
                 onPreviewAttachment={onPreviewAttachment}
-                onCopy={onCopyAssistantMessage}
-                onEdit={onEditMessage}
+                onCopy={learnerChrome ? undefined : onCopyAssistantMessage}
+                onEdit={learnerChrome ? undefined : onEditMessage}
                 onDiscardFailedSubmission={onDiscardFailedSubmission}
                 onRetryFailedSubmission={onRetryFailedSubmission}
                 editDisabled={isStreaming}
@@ -2733,14 +2733,14 @@ export const ChatMessageList = memo(function ChatMessageList({
                 </div>
               );
             })()}
-            {learnerChrome && showRegenerate ? (
+            {learnerChrome && showRegenerate && makerChoiceLines(msg.content).length > 0 ? (
               <button
                 type="button"
                 onClick={() => onRegenerateMessage()}
                 className="mt-3 inline-flex min-h-12 items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 text-base text-[var(--foreground)]"
               >
                 <MakerPicture name="swap" />
-                <span>{"再做一次"}</span>
+                <span>{"看别的"}</span>
               </button>
             ) : null}
             {!learnerChrome && (showActions || costSummary || showDelete) && (

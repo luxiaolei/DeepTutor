@@ -96,7 +96,16 @@ function PictureShape({ name }: { name: MakerPicture }) {
         />
       );
     case "draw":
-      return <circle cx="24" cy="24" r="12" fill={ink} />;
+      return (
+        <>
+          <ellipse cx="20" cy="28" rx="12" ry="8" fill={ink} />
+          <circle cx="14" cy="26" r="2" fill="#fff" />
+          <circle cx="20" cy="24" r="2" fill="#fff" />
+          <circle cx="26" cy="27" r="2" fill="#fff" />
+          <path d="M28 20l12-12" fill="none" stroke={ink} strokeWidth="3.2" strokeLinecap="round" />
+          <path d="M36 6l6 2-2 6-4-2z" fill={ink} />
+        </>
+      );
     case "animal":
       return (
         <>

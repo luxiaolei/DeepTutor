@@ -60,9 +60,11 @@ export const CATEGORIES = [
 export function useCategoryNavigation() {
   const pathname = usePathname()
   const { learningPolicy } = useAuthStatus()
-  const categories = CATEGORIES.filter(item =>
-    navVisibleUnderPolicy(item.href, learningPolicy?.allowedSurfaces ?? null)
-  )
+  const categories = learningPolicy
+    ? []
+    : CATEGORIES.filter(item =>
+        navVisibleUnderPolicy(item.href, learningPolicy?.allowedSurfaces ?? null)
+      )
   const [visited, setVisited] = useState<NavigationCategory[]>([])
   const [selection, setSelection] = useState<{
     pathname: string
@@ -227,7 +229,7 @@ export function CategoryBody({
       aria-labelledby={`category-${nav.category}`}
       className={`dt-category-content ${['partners', 'learning'].includes(nav.category) ? 'dt-category-content-fixed' : ''}`}
     >
-      {nav.category === 'home' && (
+      {nav.category === 'home' && nav.allowedSurfaces === null && (
         <>
           {/* The tutor itself leads the shelf; the tools it works with follow. */}
           {navVisibleUnderPolicy('/chat', nav.allowedSurfaces) && (
