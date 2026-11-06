@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuthStatus } from "@/hooks/useAuthStatus";
 import { Loader2, RotateCw, TriangleAlert, X } from "lucide-react";
 
 /**
@@ -34,6 +35,7 @@ export default function SessionLoadingView({
   onRetry,
 }: SessionLoadingViewProps) {
   const { t } = useTranslation();
+  const learnerBrand = useAuthStatus().learningPolicy ? t("Zaowu") : "DeepTutor";
   const [showHint, setShowHint] = useState(false);
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export default function SessionLoadingView({
       <div className="flex items-center gap-3">
         <img
           src="/brand/black-logo.png"
-          alt="DeepTutor"
+          alt={learnerBrand}
           width={32}
           height={32}
           className="h-8 w-8 select-none dark:invert"

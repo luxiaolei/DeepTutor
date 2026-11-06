@@ -9,6 +9,7 @@ import {
   learnerCapabilityAllowed,
   learnerSidebarLabel,
   learnerStyleLabel,
+  learnerActivityLabel,
   makerChoiceLines,
   makerOpening,
   makerPicture,
@@ -117,6 +118,11 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.equal(makerPicture("会讲故事的"), "story");
   assert.equal(makerPicture("会跳的小球"), "ball");
   assert.equal(makerPicture("会摆动的小星星"), "star");
+  assert.equal(makerPicture("会摆尾的小鱼"), "fish");
+  assert.equal(learnerActivityLabel("zaowu"), "造物");
+  assert.equal(learnerActivityLabel("read_skill"), null);
+  assert.equal(learnerActivityLabel("读取技能"), "读取技能");
+  assert.equal(learnerActivityLabel("name: zaowu"), "name: 造物");
   assert.equal(makerPicture("给家人看的"), "family");
   assert.equal(makerPicture("能玩的"), "play");
   assert.equal(makerPicture("小游戏"), "game");
@@ -159,6 +165,10 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(list, /<MakerChoiceRow/);
   assert.match(workspace, /makerDensity=\{learnerHome \? makerDensity : undefined\}/);
   assert.match(workspace, /speakMaker\(/);
+  assert.match(workspace, /overflow-y-auto px-6 py-8/);
+  assert.match(workspace, /learnerChrome=\{learnerHome\}/);
+  assert.match(choices, /grid-cols-2/);
+  assert.match(opening, /picture="swap"/);
 });
 
 test("learner home hides research capabilities and keeps visualize", () => {

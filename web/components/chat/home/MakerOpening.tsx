@@ -63,8 +63,9 @@ export default function MakerOpening({
       {speak ? <MakerSpeakerButton text={spoken} /> : null}
       <div
         className={
-          "flex w-full max-w-[640px] flex-wrap items-stretch justify-center " +
-          (density === "early" ? "gap-3" : "gap-2")
+          density === "early"
+            ? "grid w-full max-w-[720px] grid-cols-2 gap-3 sm:grid-cols-3"
+            : "flex w-full max-w-[720px] flex-wrap items-stretch justify-center gap-2"
         }
       >
         {opening.choices.map((choice) => (
@@ -76,15 +77,25 @@ export default function MakerOpening({
             onClick={() => onPick(choice.prompt)}
           />
         ))}
+        {density === "older" ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setPage((current) => current + 1)}
+            className="text-sm text-[var(--muted-foreground)] underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            {opening.swapLabel}
+          </button>
+        ) : (
+          <MakerChoiceButton
+            label={opening.swapLabel}
+            density={density}
+            picture="swap"
+            disabled={disabled}
+            onClick={() => setPage((current) => current + 1)}
+          />
+        )}
       </div>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setPage((current) => current + 1)}
-        className="text-sm text-[var(--muted-foreground)] underline-offset-2 hover:underline disabled:opacity-50"
-      >
-        {opening.swapLabel}
-      </button>
     </div>
   );
 }

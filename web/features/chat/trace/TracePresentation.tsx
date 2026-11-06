@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { formatTurnDuration, getTurnDurationSeconds } from "@/lib/trace-timing";
 import { describeProviderTool, type ToolProvider } from "@/lib/trace-tools";
+import { learnerActivityLabel } from "@/lib/zaowu-home";
 import type { StreamEvent } from "@/features/chat/model/protocol";
 import {
   ActivityDetailGrid,
@@ -627,9 +628,11 @@ function pairToolEvents(events: StreamEvent[]): ToolExchange[] {
 function ToolExchangeDetail({
   exchange,
   showToolName,
+  learner = false,
 }: {
   exchange: ToolExchange;
   showToolName: boolean;
+  learner?: boolean;
 }) {
   const { call, result } = exchange;
   const toolName = (call.metadata?.tool as string | undefined) ?? undefined;
@@ -648,17 +651,29 @@ function ToolExchangeDetail({
       : "";
 
   const resultText = result?.content?.trim() || (!isCall ? call.content : "");
+  const visible = (value: string) => (learner ? learnerActivityLabel(value) : value);
   const rows: DetailRow[] = [];
 
   if (showToolName && (toolName || call.content)) {
-    rows.push({ key: "tool", value: toolName || call.content, mono: true });
+    const name = visible(toolName || call.content);
+    if (name) rows.push({ key: "tool", value: name, mono: true });
   }
-  rows.push(...entries);
-  if (fallback) rows.push({ key: "args", value: fallback, mono: true });
+  rows.push(
+    ...entries.flatMap((row) => {
+      if (!learner || typeof row.value !== "string") return [row];
+      const value = learnerActivityLabel(row.value);
+      return value ? [{ ...row, value }] : [];
+    }),
+  );
+  if (fallback) {
+    const value = visible(fallback);
+    if (value) rows.push({ key: "args", value, mono: true });
+  }
   if (resultText) {
+    const shown = learner ? resultText.replace(/\bzaowu\b/gi, "造物") : resultText;
     rows.push({
       key: "result",
-      value: <MarkdownRenderer content={resultText} variant="trace" />,
+      value: <MarkdownRenderer content={shown} variant="trace" />,
     });
   }
 
@@ -745,6 +760,7 @@ function TraceRowBody({
   role,
   kind,
   t,
+  learner = false,
 }: {
   callId: string;
   callEvents: StreamEvent[];
@@ -752,6 +768,7 @@ function TraceRowBody({
   role: string;
   kind: string;
   t: (key: string) => string;
+  learner?: boolean;
 }) {
   const progressEvents = callEvents.filter((event) => {
     if (event.type !== "progress") return false;
@@ -816,6 +833,7 @@ function TraceRowBody({
                     // Inside a round's "Tool" section the name is the only
                     // thing identifying which tool ran.
                     showToolName
+                    learner={learner}
                   />
                 ))}
               </div>
@@ -867,6 +885,7 @@ function TraceRowBody({
                   // The row's own first level already spells the action out,
                   // so repeating the raw tool name here is noise.
                   showToolName={false}
+                  learner={learner}
                 />
               ))}
             </div>
@@ -978,10 +997,12 @@ function TraceRowItem({
   trace,
   active,
   nested,
+  learner = false,
 }: {
   trace: TraceItem;
   active: boolean;
   nested: boolean;
+  learner?: boolean;
 }) {
   const { t } = useTranslation();
   const [userOpen, setUserOpen] = useState<boolean | null>(null);
@@ -1133,7 +1154,7 @@ function TraceRowItem({
       // opening of the reasoning. The full text is level two.
       title={headline}
       detail={
-        chip?.text ??
+        (learner && chip?.text ? learnerActivityLabel(chip.text) : chip?.text) ??
         // The preview is what stands in for the text while the row is folded.
         // An open row already shows that text in full below, so repeating its
         // opening on the title line prints the same sentence twice — which is
@@ -1170,6 +1191,7 @@ function TraceRowItem({
           role={role}
           kind={kind}
           t={t}
+          learner={learner}
         />
       )}
     </ActivityRow>
@@ -1180,12 +1202,15 @@ export function CallTracePanel({
   events,
   isStreaming,
   nested = false,
+  learner = false,
 }: {
   events: StreamEvent[];
   isStreaming?: boolean;
   // Kept for callers that render the rows inside their own framed shell;
   // rows are inline either way, ``nested`` only affects sub-row layout.
   nested?: boolean;
+  /** A learner must not see raw skill ids such as zaowu. */
+  learner?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -1245,6 +1270,7 @@ export function CallTracePanel({
                       isTracePending(trace.events)
                     }
                     nested={nested}
+                    learner={learner}
                   />
                 ))}
               </ActivityStack>
@@ -1262,6 +1288,7 @@ export function CallTracePanel({
             trace={item.trace}
             active={active}
             nested={nested}
+            learner={learner}
           />
         );
       })}
@@ -1669,9 +1696,11 @@ function hasRenderableCallTrace(events: StreamEvent[]): boolean {
 export function TraceFlow({
   events,
   isStreaming,
+  learner = false,
 }: {
   events: StreamEvent[];
   isStreaming?: boolean;
+  learner?: boolean;
 }) {
   // Mount only when at least one renderable trace group exists — groups
   // that CallTracePanel would discard (final-response only, or reasoning
@@ -1680,7 +1709,7 @@ export function TraceFlow({
   const hasCallTrace = useMemo(() => hasRenderableCallTrace(events), [events]);
 
   if (!hasCallTrace) return null;
-  return <CallTracePanel events={events} isStreaming={isStreaming} />;
+  return <CallTracePanel events={events} isStreaming={isStreaming} learner={learner} />;
 }
 
 /**
@@ -1692,13 +1721,15 @@ export function TraceFlow({
 export function NestedTraceFlow({
   events,
   isStreaming,
+  learner = false,
 }: {
   events: StreamEvent[];
   isStreaming?: boolean;
+  learner?: boolean;
 }) {
   return (
     <div className="pt-2 [&>div]:mb-0">
-      <TraceFlow events={events} isStreaming={isStreaming} />
+      <TraceFlow events={events} isStreaming={isStreaming} learner={learner} />
     </div>
   );
 }
@@ -1778,6 +1809,7 @@ export function AssistantActivity({
   content,
   className = "",
   agentName,
+  learner = false,
   answerer,
   showMark = true,
   headerClassName = "",
@@ -1802,6 +1834,8 @@ export function AssistantActivity({
   className?: string;
   /** Forwarded to StreamingStatus — names the thinker in the status row. */
   agentName?: string;
+  /** Hide raw skill ids on tool rows. */
+  learner?: boolean;
   /** Forwarded to StreamingStatus — the partner or agent a turn was handed to. */
   answerer?: Answerer;
   /** Hide the activity mark (partner chat shows its avatar instead). */
@@ -1900,6 +1934,7 @@ export function AssistantActivity({
             <NestedTraceFlow
               events={shownTraceEvents}
               isStreaming={isStreaming}
+              learner={learner}
             />
           ) : (
             <TraceLoadingRow />

@@ -14,6 +14,7 @@ import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { PageChromeProvider } from "./PageChrome";
 import { useTranslation } from "react-i18next";
+import { useAuthStatus } from "@/hooks/useAuthStatus";
 import { useDevice } from "@/hooks/useDevice";
 import type { ReactNode } from "react";
 
@@ -54,6 +55,8 @@ interface AppShellProps {
  */
 export default function AppShell({ sidebar, pageBar, children, homeHref = "/" }: AppShellProps) {
   const { t } = useTranslation();
+  const auth = useAuthStatus();
+  const learner = Boolean(auth.learningPolicy);
   const pathname = usePathname();
   const { isMobile } = useDevice();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -68,6 +71,15 @@ export default function AppShell({ sidebar, pageBar, children, homeHref = "/" }:
     setTrackedPathname(pathname);
     setDrawerOpen(false);
   }
+
+  useEffect(() => {
+    if (!learner) return;
+    const previous = document.title;
+    document.title = t("Zaowu");
+    return () => {
+      document.title = previous;
+    };
+  }, [learner, t]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -118,11 +130,14 @@ export default function AppShell({ sidebar, pageBar, children, homeHref = "/" }:
             <Link href={homeHref} className="flex items-center gap-1.5">
               <Image
                 src="/brand/color-logo.png"
-                alt="DeepTutor"
+                alt={learner ? t("Zaowu") : "DeepTutor"}
                 width={20}
                 height={20}
                 className="h-5 w-5"
               />
+              {learner ? (
+                <span className="text-[15px] font-medium tracking-tight">{t("Zaowu")}</span>
+              ) : (
               <Image
                 src="/brand/color-word.png"
                 alt="DeepTutor"
@@ -130,6 +145,7 @@ export default function AppShell({ sidebar, pageBar, children, homeHref = "/" }:
                 height={310}
                 className="h-[18px] w-auto"
               />
+              )}
             </Link>
           </div>
 

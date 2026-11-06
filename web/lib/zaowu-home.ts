@@ -169,12 +169,15 @@ export type MakerPicture =
   | "music"
   | "draw"
   | "animal"
+  | "fish"
   | "idea"
   | "direction"
   | "motion"
+  | "swap"
   | "spark";
 
 const PICTURE_RULES: ReadonlyArray<readonly [RegExp, MakerPicture]> = [
+  [/鱼/, "fish"],
   [/球/, "ball"],
   [/星/, "star"],
   [/故事|书/, "story"],
@@ -185,7 +188,7 @@ const PICTURE_RULES: ReadonlyArray<readonly [RegExp, MakerPicture]> = [
   [/玩/, "play"],
   [/歌|唱|音乐/, "music"],
   [/画|颜色|涂/, "draw"],
-  [/猫|狗|动物|鸟|鱼/, "animal"],
+  [/猫|狗|动物|鸟/, "animal"],
   [/主意|点子|想法/, "idea"],
   [/方向/, "direction"],
   [/动|转|摆|跳|风/, "motion"],
@@ -219,6 +222,18 @@ export function spokenMakerPrompt(heading: string, choices: readonly string[]): 
   if (!options) return lead;
   const gap = /[。！？]$/.test(lead) ? "" : "。";
   return `${lead}${gap}${options}。`;
+}
+
+/**
+ * What a learner may see on a tool row. `zaowu` becomes 造物. Any other
+ * bare skill or tool slug is dropped so the row keeps only its verb.
+ */
+export function learnerActivityLabel(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  const rewritten = value.replace(/\bzaowu\b/gi, "造物").trim();
+  if (!rewritten) return null;
+  if (/^[a-z][a-z0-9_-]{1,48}$/.test(rewritten)) return null;
+  return rewritten;
 }
 
 /** Empty-composer line. A continuation hint still wins once a chat has one. */

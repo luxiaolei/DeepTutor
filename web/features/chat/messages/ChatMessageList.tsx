@@ -299,6 +299,7 @@ const ProcessBody = memo(
     isStreaming,
     readingMaterialId,
     readingMaterialRevision,
+    learner = false,
   }: {
     segments: MessageSegment[];
     events: StreamEvent[];
@@ -308,6 +309,8 @@ const ProcessBody = memo(
     isStreaming?: boolean;
     readingMaterialId?: string;
     readingMaterialRevision?: number;
+    /** Drop raw skill slugs such as zaowu from tool rows. */
+    learner?: boolean;
   }) {
     return (
       <div
@@ -334,7 +337,7 @@ const ProcessBody = memo(
               className="[&>div]:mb-0"
               style={{ marginLeft: -ROW_GUTTER }}
             >
-              <TraceFlow events={seg.events} isStreaming={isStreaming} />
+              <TraceFlow events={seg.events} isStreaming={isStreaming} learner={learner} />
             </div>
           ) : seg.kind === "ask_user" && seg.data.resolved ? (
             <AskUserOptions
@@ -750,6 +753,7 @@ export const AssistantMessage = memo(function AssistantMessage({
   onMakerChoice,
   activityName,
   makerDensity = "older",
+  learnerChrome = false,
   researchRequestSnapshot,
   onTraceToggle,
   masteryGrades,
@@ -828,6 +832,8 @@ export const AssistantMessage = memo(function AssistantMessage({
   activityName?: string;
   /** How picture-heavy the choice buttons are. Youngest is spoken too. */
   makerDensity?: ZaowuDensity;
+  /** Learner chrome: no raw skill ids, no token meter. */
+  learnerChrome?: boolean;
 }) {
   const { t } = useTranslation();
   const events = useMemo(() => msg.events ?? [], [msg.events]);
@@ -1128,6 +1134,7 @@ export const AssistantMessage = memo(function AssistantMessage({
         isStreaming={isStreaming}
         readingMaterialId={readingMaterialId}
         readingMaterialRevision={readingMaterialRevision}
+        learner={learnerChrome}
       />
     ),
     [
@@ -1137,6 +1144,7 @@ export const AssistantMessage = memo(function AssistantMessage({
       readingMaterialRevision,
       events,
       processSettled,
+      learnerChrome,
     ],
   );
   const headerProcessSummary = useMemo(() => {
@@ -1166,6 +1174,7 @@ export const AssistantMessage = memo(function AssistantMessage({
       <AssistantActivity
         events={events}
         agentName={activityName}
+        learner={learnerChrome}
         answerer={answerer}
         traceEvents={headerTraceEvents}
         isStreaming={isStreaming}
@@ -2199,6 +2208,7 @@ export const ChatMessageList = memo(function ChatMessageList({
   onMakerChoice,
   activityName,
   makerDensity = "older",
+  learnerChrome = false,
   showModeBadge = true,
   onLoadMessageTrace,
   onReleaseMessageTrace,
@@ -2273,6 +2283,8 @@ export const ChatMessageList = memo(function ChatMessageList({
   activityName?: string;
   /** Picture and speech density for maker choice buttons. */
   makerDensity?: ZaowuDensity;
+  /** Hide adult meters and raw skill ids. */
+  learnerChrome?: boolean;
   /** Names of KBs confirmed to exist. Omitted when the KB list is unavailable. */
   availableKbNames?: Set<string>;
   /** Qualified KB ref -> display name, from the same catalog the composer
@@ -2664,6 +2676,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                 }
                 activityName={activityName}
                 makerDensity={makerDensity}
+                learnerChrome={learnerChrome}
                 researchRequestSnapshot={
                   pairedUserMessage?.requestSnapshot ?? null
                 }
@@ -2771,7 +2784,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                     {showActions && assistantActions?.(msg)}
                   </div>
                 )}
-                {costSummary && !compactActions && (
+                {costSummary && !compactActions && !learnerChrome && (
                   // The room left beside the actions is what the usage pill
                   // measures itself against (see UsageFooter).
                   <div className="flex min-w-0 flex-1 justify-end pl-2 [container-type:inline-size]">

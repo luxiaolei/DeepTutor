@@ -268,6 +268,7 @@ export default memo(function ChatComposer({
   onSelectMemoryPicker,
   onClearPersona,
   lockedPersona,
+  learnerChrome = false,
   personaSelection,
   onPersonaSelectionChange,
   personaSelectorOpen,
@@ -417,6 +418,8 @@ export default memo(function ChatComposer({
   onPersonaSelectionChange?: (persona: string) => void;
   /** Learner grant lock. The style chip shows this name instead of Default. */
   lockedPersona?: string;
+  /** Hide the model id, context meter, and other adult resource readouts. */
+  learnerChrome?: boolean;
   personaSelectorOpen?: boolean;
   onPersonaSelectorOpenChange?: (open: boolean) => void;
   /** Main chat's session-level reply language, selected via /language. */
@@ -1559,6 +1562,7 @@ export default memo(function ChatComposer({
               </div>
 
               <div className={styles.actions}>
+                {learnerChrome ? null : (
                 <ModelSelector
                   options={llmOptions}
                   activeDefault={activeLLMDefault}
@@ -1568,8 +1572,9 @@ export default memo(function ChatComposer({
                   onChange={onSelectLLM}
                   onRefresh={onRefreshLLMOptions}
                 />
+                )}
 
-                {contextBudget ? <ContextBudgetChip budget={contextBudget} /> : null}
+                {!learnerChrome && contextBudget ? <ContextBudgetChip budget={contextBudget} /> : null}
 
                 {(controls?.voice !== false || recorder.state !== "idle") && <Tooltip
                   label={recorder.state === "recording" ? t("Stop recording") : t("Record voice")}

@@ -24,9 +24,11 @@ const DISC: Record<MakerPicture, string> = {
   music: "#e7a0d0",
   draw: "#f0b429",
   animal: "#e8b089",
+  fish: "#6eb5d0",
   idea: "#f6d36b",
   direction: "#86c5a6",
   motion: "#7eb6ff",
+  swap: "#b7b0f0",
   spark: "#f6c945",
 };
 
@@ -90,6 +92,36 @@ function PictureShape({ name }: { name: MakerPicture }) {
           <circle cx="24" cy="26" r="10" fill={ink} />
         </>
       );
+    case "fish":
+      return (
+        <>
+          <polygon points="12,24 4,14 4,34" fill={ink} />
+          <ellipse cx="28" cy="24" rx="14" ry="9" fill={ink} />
+          <circle cx="36" cy="21" r="1.8" fill="#fff" />
+          <path d="M22 16c2 3 2 13 0 16" fill="none" stroke="#fff" strokeWidth="1.6" />
+        </>
+      );
+    case "swap":
+      return (
+        <>
+          <path
+            d="M16 14h16l-4-5"
+            fill="none"
+            stroke={ink}
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M32 34H16l4 5"
+            fill="none"
+            stroke={ink}
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      );
     case "idea":
       return (
         <>
@@ -135,16 +167,21 @@ export function MakerPicture({ name, large }: { name: MakerPicture; large?: bool
 export function MakerChoiceButton({
   label,
   density,
+  picture: pictureOverride,
   disabled = false,
   onClick,
 }: {
   label: string;
   density: ZaowuDensity;
+  /** Force a mark, such as the refresh card, instead of guessing from the words. */
+  picture?: MakerPicture;
   disabled?: boolean;
   onClick: () => void;
 }) {
   const early = density === "early";
-  const picture = makerShowsPictures(density) ? makerPicture(label) : null;
+  const picture = makerShowsPictures(density)
+    ? pictureOverride ?? makerPicture(label)
+    : null;
   return (
     <button
       type="button"
@@ -157,7 +194,7 @@ export function MakerChoiceButton({
       className={
         "rounded-2xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[var(--foreground)]/30 disabled:opacity-50 " +
         (early
-          ? "flex min-h-36 min-w-[46%] flex-col items-center justify-center gap-3 px-4 py-4"
+          ? "flex h-full min-h-36 w-full flex-col items-center justify-center gap-3 px-4 py-4"
           : picture
             ? "inline-flex min-h-12 items-center gap-2 px-4 py-3 text-base"
             : "min-h-12 px-4 py-3 text-base")
@@ -206,22 +243,26 @@ export function MakerChoiceRow({
   const spoken = spokenMakerPrompt(heading, choices);
   const speak = makerSpeaks(density);
   useSpokenMakerPrompt(speak, spoken);
+  const early = density === "early";
   return (
-    <div
-      className={
-        "mt-3 flex w-full flex-wrap items-stretch " +
-        (density === "early" ? "justify-center gap-3" : "gap-2")
-      }
-    >
+    <div className="mt-3 flex w-full flex-col items-center gap-3">
       {speak ? <MakerSpeakerButton text={spoken} /> : null}
-      {choices.map((choice) => (
-        <MakerChoiceButton
-          key={choice}
-          label={choice}
-          density={density}
-          onClick={() => onPick(choice)}
-        />
-      ))}
+      <div
+        className={
+          early
+            ? "grid w-full max-w-[640px] grid-cols-2 gap-3"
+            : "flex w-full flex-wrap gap-2"
+        }
+      >
+        {choices.map((choice) => (
+          <MakerChoiceButton
+            key={choice}
+            label={choice}
+            density={density}
+            onClick={() => onPick(choice)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

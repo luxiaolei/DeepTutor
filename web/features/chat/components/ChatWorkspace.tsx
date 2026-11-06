@@ -2777,11 +2777,18 @@ export default function ChatWorkspace() {
                   </div>
                 </div>
               ) : !hasMessages ? (
-                // Clipped rather than pushed under the header when a short
-                // window leaves the greeting no room.
-                <div className="flex w-full flex-1 min-h-0 items-end justify-center overflow-hidden pb-14 animate-fade-in px-6">
+                // The adult greeting stays pinned to the composer. A learner
+                // opening scrolls from the title, so the sentence is not
+                // clipped off the top of the window.
+                <div
+                  className={
+                    learnerHome
+                      ? "flex w-full min-h-0 flex-1 flex-col overflow-y-auto px-6 py-8 animate-fade-in"
+                      : "flex w-full flex-1 min-h-0 items-end justify-center overflow-hidden pb-14 animate-fade-in px-6"
+                  }
+                >
                   {learnerHome ? (
-                    <div className="w-full max-w-[960px]">
+                    <div className="mx-auto w-full max-w-[960px]">
                       {needsParentConfirm ? (
                         <ParentStartConfirm
                           busy={parentConfirmBusy}
@@ -2894,6 +2901,7 @@ export default function ChatWorkspace() {
                         }
                         activityName={learnerHome ? t("Zaowu") : undefined}
                         makerDensity={learnerHome ? makerDensity : undefined}
+                        learnerChrome={learnerHome}
                         onPreviewAttachment={handlePreviewMessageAttachment}
                         onOpenConsultation={(events) => {
                           const meta = events[0]?.metadata ?? {};
@@ -2992,6 +3000,7 @@ export default function ChatWorkspace() {
                 </div>
               ) : null}
               <ChatComposer
+                learnerChrome={learnerHome}
                 customizable
                 composerRef={composerRef}
                 capMenuRef={capMenuRef}
