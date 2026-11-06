@@ -12,6 +12,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { makerChoiceLines } from "@/lib/zaowu-home";
 import {
   BookMarked,
   BookOpen,
@@ -740,6 +741,7 @@ export const AssistantMessage = memo(function AssistantMessage({
   onAnswerMasteryQuestion,
   onSkipMasteryQuestion,
   onChallengeMasteryQuestion,
+  onMakerChoice,
   researchRequestSnapshot,
   onTraceToggle,
   masteryGrades,
@@ -811,6 +813,8 @@ export const AssistantMessage = memo(function AssistantMessage({
     questionId: string,
   ) => void | boolean | Promise<void | boolean>;
   onChallengeMasteryQuestion?: (questionId: string) => void | boolean | Promise<void | boolean>;
+  /** Send one bounded maker choice as the next turn. */
+  onMakerChoice?: (choice: string) => void;
 }) {
   const { t } = useTranslation();
   const events = useMemo(() => msg.events ?? [], [msg.events]);
@@ -864,9 +868,17 @@ export const AssistantMessage = memo(function AssistantMessage({
   }, [msg.capability, resultEvent]);
 
   const visualizeResult = useMemo(() => {
-    if (msg.capability !== "visualize" || !resultEvent) return null;
-    return extractVisualizeResult(resultEvent.metadata);
-  }, [msg.capability, resultEvent]);
+    // A maker seed is produced by visualize even when the composer sent chat.
+    // The result event is what puts the canvas on screen.
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index];
+      if (event.type !== "result") continue;
+      if (event.source !== "visualize" && msg.capability !== "visualize") continue;
+      const result = extractVisualizeResult(event.metadata);
+      if (result) return result;
+    }
+    return null;
+  }, [events, msg.capability]);
 
   const videoLessonResult = useMemo(() => {
     // A one-turn capability or a resumed turn may still have the composer's
@@ -1322,6 +1334,18 @@ export const AssistantMessage = memo(function AssistantMessage({
       askUserPayload ? (
         <AskUserOptions data={askUserPayload} onSubmit={submitReply} />
       ) : null}
+      {onMakerChoice && !isStreaming && !visualizeResult && !askUserPayload
+        ? makerChoiceLines(msg.content).map((choice) => (
+            <button
+              key={choice}
+              type="button"
+              onClick={() => onMakerChoice(choice)}
+              className="mr-2 mt-3 min-h-12 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 text-base text-[var(--foreground)]"
+            >
+              {choice}
+            </button>
+          ))
+        : null}
       {/* Credential hand-off sits below whichever body branch rendered: it
           supplements the answer ("here's where to paste the key") rather than
           replacing it, and applies to every branch. */}
@@ -2152,6 +2176,7 @@ export const ChatMessageList = memo(function ChatMessageList({
   onAnswerMasteryQuestion,
   onSkipMasteryQuestion,
   onChallengeMasteryQuestion,
+  onMakerChoice,
   showModeBadge = true,
   onLoadMessageTrace,
   onReleaseMessageTrace,
@@ -2220,6 +2245,8 @@ export const ChatMessageList = memo(function ChatMessageList({
     questionId: string,
   ) => void | boolean | Promise<void | boolean>;
   onChallengeMasteryQuestion?: (questionId: string) => void | boolean | Promise<void | boolean>;
+  /** Learner maker choices in the latest reply send the next turn. */
+  onMakerChoice?: (choice: string) => void;
   /** Names of KBs confirmed to exist. Omitted when the KB list is unavailable. */
   availableKbNames?: Set<string>;
   /** Qualified KB ref -> display name, from the same catalog the composer
@@ -2604,6 +2631,11 @@ export const ChatMessageList = memo(function ChatMessageList({
                 onAnswerMasteryQuestion={onAnswerMasteryQuestion}
                 onSkipMasteryQuestion={onSkipMasteryQuestion}
                 onChallengeMasteryQuestion={onChallengeMasteryQuestion}
+                onMakerChoice={
+                  onMakerChoice && !isStreaming && i === lastRenderedAssistantIndex
+                    ? onMakerChoice
+                    : undefined
+                }
                 researchRequestSnapshot={
                   pairedUserMessage?.requestSnapshot ?? null
                 }

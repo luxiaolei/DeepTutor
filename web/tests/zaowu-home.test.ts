@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import {
   composerPlaceholder,
   guidanceDensity,
   learnerCapabilityAllowed,
   learnerSidebarLabel,
   learnerStyleLabel,
+  makerChoiceLines,
   makerOpening,
 } from "../lib/zaowu-home";
 
@@ -71,6 +74,22 @@ test("learner chrome uses the maker name, not the adult defaults", () => {
     }),
     "继续改太阳",
   );
+});
+
+test("maker chips send a choice and numbered replies become buttons", () => {
+  const opening = makerOpening("early");
+  assert.equal(opening.choices[0]?.prompt, "我想做一个会动的小东西。");
+  const source = readFileSync(
+    path.resolve(process.cwd(), "features/chat/components/ChatWorkspace.tsx"),
+    "utf8",
+  );
+  assert.match(source, /void handleSend\(prompt\)/);
+  assert.match(source, /void handleSend\(choice\)/);
+  assert.deepEqual(
+    makerChoiceLines("会动的小东西很有趣！你想做哪一种？\n1. 会跳的小球\n2. 会摆动的小星星"),
+    ["会跳的小球", "会摆动的小星星"],
+  );
+  assert.deepEqual(makerChoiceLines("只有一句，没有选项。"), []);
 });
 
 test("learner home hides research capabilities and keeps visualize", () => {

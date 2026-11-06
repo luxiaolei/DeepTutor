@@ -125,6 +125,19 @@ export function learnerStyleLabel(options: {
   return id;
 }
 
+/** Short numbered options the maker shell turns into send buttons. */
+export function makerChoiceLines(text: string): string[] {
+  const choices: string[] = [];
+  for (const line of text.split("\n")) {
+    const match = line.match(/^\s*\d+[.、)]\s+(.+?)\s*$/);
+    if (!match) continue;
+    const label = match[1].trim();
+    if (label && label.length <= 40) choices.push(label);
+  }
+  if (choices.length < 2 || choices.length > 3) return [];
+  return choices;
+}
+
 /** Empty-composer line. A continuation hint still wins once a chat has one. */
 export function composerPlaceholder(options: {
   learner: boolean;

@@ -975,6 +975,23 @@ class TurnExecutor:
                 )
                 source_manifest_text += task_context
 
+            from deeptutor.multi_user.maker_gate import MAKER_STAGE_KEY, route_maker_turn
+
+            routed_capability, maker_stage = route_maker_turn(
+                requested=str(capability_name or payload.get("capability") or "chat"),
+                history=conversation_history,
+                current_message=raw_user_content,
+                allowed_capabilities=set((learning_policy or {}).get("allowed_capabilities") or []),
+                learning=learning_policy is not None,
+            )
+            turn_config = request_config
+            if routed_capability == "visualize" and (capability_name or "chat") in {"", "chat"}:
+                # The maker screen sends plain chat. The seed still has to
+                # reach the canvas, which only happens through visualize.
+                capability_name = "visualize"
+                payload["capability"] = "visualize"
+                turn_config = {"render_mode": "auto"}
+
             context = UnifiedContext(
                 session_id=session_id,
                 user_message=effective_user_message,
@@ -987,10 +1004,10 @@ class TurnExecutor:
                     if side_chat_context
                     else (["ask_user", "read_skill"] if learning_policy is not None else None)
                 ),
-                active_capability=payload.get("capability"),
+                active_capability=capability_name or payload.get("capability"),
                 knowledge_bases=payload.get("knowledge_bases", []),
                 attachments=attachments,
-                config_overrides=request_config,
+                config_overrides=turn_config,
                 language=payload.get("language", "en"),
                 memory_context=memory_context,
                 learning_journal_context=learning_journal_context,
@@ -1023,6 +1040,7 @@ class TurnExecutor:
                     "history_budget": history_result.budget,
                     "reply_language_fixed": bool(payload.get("_reply_language_fixed")),
                     "turn_id": turn_id,
+                    MAKER_STAGE_KEY: maker_stage or "",
                     "question_followup_context": followup_question_context or {},
                     "side_chat_context": side_chat_context or {},
                     "notebook_references": notebook_references,

@@ -2790,7 +2790,9 @@ export default function ChatWorkspace() {
                       ) : (
                         <MakerOpening
                           density={makerDensity}
-                          onPick={(prompt) => handlePrefillComposer(prompt)}
+                          onPick={(prompt) => {
+                            void handleSend(prompt);
+                          }}
                         />
                       )}
                     </div>
@@ -2866,6 +2868,13 @@ export default function ChatWorkspace() {
                         onResendLastTurn={handleResendMessage}
                         onRetryTurn={handleRetryTurn}
                         onConfirmOutline={handleConfirmOutline}
+                        onMakerChoice={
+                          learnerHome
+                            ? (choice) => {
+                                void handleSend(choice);
+                              }
+                            : undefined
+                        }
                         onPreviewAttachment={handlePreviewMessageAttachment}
                         onOpenConsultation={(events) => {
                           const meta = events[0]?.metadata ?? {};

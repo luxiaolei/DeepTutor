@@ -80,6 +80,31 @@ def seed_payload_error(visualizer: str, payload: str) -> str:
     return ""
 
 
+def route_maker_turn(
+    *,
+    requested: str,
+    history: list[dict[str, Any]] | None,
+    current_message: str,
+    allowed_capabilities: set[str] | None,
+    learning: bool,
+) -> tuple[str, str | None]:
+    """Return ``(capability, stage)`` for one learner turn.
+
+    Talk stays on chat. After the child has chosen, the seed and the one
+    change run on ``visualize`` so ``submit_visualization`` is actually
+    mounted. A client that sent ``chat`` does not get a canvas otherwise.
+    """
+    if not learning:
+        capability = requested or "chat"
+        return capability, None
+    stage = decide_maker_stage(history, current_message)
+    capability = requested or "chat"
+    allowed = allowed_capabilities or set()
+    if stage in {SEED, REVISE} and capability in {"", "chat"} and "visualize" in allowed:
+        return "visualize", stage
+    return capability, stage
+
+
 def stage_from_context(context: Any) -> str | None:
     """Learning-account stage, or None when this turn is not gated."""
     metadata = getattr(context, "metadata", None)
@@ -124,6 +149,7 @@ __all__ = [
     "TALK",
     "decide_maker_stage",
     "prior_visualization_commits",
+    "route_maker_turn",
     "seed_payload_error",
     "stage_from_context",
 ]

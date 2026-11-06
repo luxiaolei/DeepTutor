@@ -7,6 +7,7 @@ from deeptutor.multi_user.maker_gate import (
     SEED,
     TALK,
     decide_maker_stage,
+    route_maker_turn,
     seed_payload_error,
 )
 from deeptutor.multi_user.grants import learner_grant, save_grant
@@ -105,6 +106,40 @@ def test_one_sentence_stays_in_talk_and_a_seed_is_not_a_finished_page():
         "<script>document.body.dataset.ready='1'</script></body></html>"
     )
     assert seed_payload_error("html", seed) == ""
+
+
+def test_chat_seed_turn_is_routed_to_visualize():
+    history = [
+        {"role": "user", "content": "我想做一个会动的小东西。"},
+        {"role": "assistant", "content": "1. 会跳的小球\n2. 会摆动的小星星"},
+    ]
+    capability, stage = route_maker_turn(
+        requested="chat",
+        history=history,
+        current_message="会跳的小球",
+        allowed_capabilities={"chat", "visualize", "immersive_reading"},
+        learning=True,
+    )
+    assert stage == SEED
+    assert capability == "visualize"
+    talk_capability, talk_stage = route_maker_turn(
+        requested="chat",
+        history=[],
+        current_message="我想做一个会动的小东西。",
+        allowed_capabilities={"chat", "visualize"},
+        learning=True,
+    )
+    assert talk_stage == TALK
+    assert talk_capability == "chat"
+    stayed, stayed_stage = route_maker_turn(
+        requested="chat",
+        history=history,
+        current_message="会跳的小球",
+        allowed_capabilities={"chat"},
+        learning=True,
+    )
+    assert stayed_stage == SEED
+    assert stayed == "chat"
 
 
 def test_primary_age_needs_a_parent_tap(mu_isolated_root):
