@@ -96,3 +96,43 @@ export function learnerCapabilityAllowed(
 export function isLearnerHome(learningPolicy: { allowedSurfaces?: string[] } | null | undefined): boolean {
   return Boolean(learningPolicy);
 }
+
+/** Sidebar header the learner sees. The workspace name stays for other accounts. */
+export function learnerSidebarLabel(
+  learner: boolean,
+  workspaceName: string,
+  zaowuLabel: string,
+): string {
+  return learner ? zaowuLabel : workspaceName;
+}
+
+/**
+ * Composer style chip. A locked learner persona wins over an empty client
+ * selection, which otherwise renders as the adult "Default" label.
+ */
+export function learnerStyleLabel(options: {
+  selected?: string;
+  lockedPersona?: string;
+  personas?: readonly { name: string; title?: string }[];
+  defaultLabel: string;
+  zaowuLabel?: string;
+}): string {
+  const id = (options.lockedPersona || options.selected || "").trim();
+  if (!id) return options.defaultLabel;
+  const title = options.personas?.find((item) => item.name === id)?.title?.trim();
+  if (title) return title;
+  if (id === "zaowu") return options.zaowuLabel || "造物";
+  return id;
+}
+
+/** Empty-composer line. A continuation hint still wins once a chat has one. */
+export function composerPlaceholder(options: {
+  learner: boolean;
+  hint?: string;
+  maker: string;
+  adult: string;
+}): string {
+  const hint = options.hint?.trim();
+  if (hint) return hint;
+  return options.learner ? options.maker : options.adult;
+}

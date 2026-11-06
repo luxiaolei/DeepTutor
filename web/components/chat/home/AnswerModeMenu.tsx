@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { agentGlyph, agentKindLabel } from "@/components/agents/agent-icons";
 import PartnerAvatar from "@/components/partners/PartnerAvatar";
 import { listPersonas, personaLabel, type PersonaInfo } from "@/lib/personas-api";
+import { learnerStyleLabel } from "@/lib/zaowu-home";
 import type { PartnerInfo } from "@/lib/partners-api";
 import type { PartnerGroup } from "@/lib/partner-groups-api";
 import type { ResourceKind } from "@/lib/resource-reuse";
@@ -48,7 +49,12 @@ export interface Answerers {
 
 export interface AnswerModeProps {
   /** DeepTutor's own register for this conversation; "" is its usual voice. */
-  persona?: { value: string; onChange: (persona: string) => void };
+  persona?: {
+    value: string;
+    onChange: (persona: string) => void;
+    /** Server-locked learner persona. The chip shows this even when value is empty. */
+    locked?: string;
+  };
   answerers?: Answerers;
   /** Controlled open state, so `/persona` can open this list. */
   open?: boolean;
@@ -109,7 +115,12 @@ export default function AnswerModeMenu({
   const agent = kind === "subagent" ? answerers?.agents.find((item) => item.name === id) : undefined;
   // The trigger names whoever answers; a voice only when DeepTutor does.
   let icon: ReactNode = <UserRound size={14} strokeWidth={1.7} className="shrink-0" />;
-  let value = persona?.value || t("Default");
+  let value = learnerStyleLabel({
+    selected: persona?.value,
+    lockedPersona: persona?.locked,
+    defaultLabel: t("Default"),
+    zaowuLabel: t("Zaowu"),
+  });
   if (partner || kind === "partner") {
     icon = partner ? <PartnerFace partner={partner} size={16} /> : icon;
     value = partner?.name ?? id;
@@ -122,7 +133,7 @@ export default function AnswerModeMenu({
       icon={icon}
       label={t("Preferences")}
       value={value}
-      active={Boolean(chosen || persona?.value)}
+      active={Boolean(chosen || persona?.value || persona?.locked)}
       placement={placement}
       align="end"
       open={onOpenChange ? open : undefined}
@@ -158,7 +169,8 @@ function AnswerList({
   const needle = query.trim().toLocaleLowerCase();
   const matches = (...text: (string | undefined)[]) =>
     !needle || text.join(" ").toLocaleLowerCase().includes(needle);
-  const styleRows = personas.filter((item) => matches(item.name, item.description));
+  const styleRows = personas.filter((item) => matches(item.name, item.title, item.description));
+  const effectivePersona = (persona?.locked || persona?.value || "").trim();
   const partnerRows = answerers?.partners.filter((item) => matches(item.name)) ?? [];
   const agentRows = answerers?.agents.filter((item) => matches(item.name)) ?? [];
   const total = personas.length + (answerers?.partners.length ?? 0) + (answerers?.agents.length ?? 0);
@@ -176,7 +188,7 @@ function AnswerList({
       <TrayList label={t("Preferences")}>
         {persona && (
           <TraySection title={t("Response style")}>
-            {matches(t("Default")) && (
+            {!persona?.locked && matches(t("Default")) && (
               <TrayOption
                 selected={!persona.value}
                 onSelect={() => {
@@ -191,7 +203,7 @@ function AnswerList({
             {styleRows.map((item) => (
               <TrayOption
                 key={item.name}
-                selected={persona.value === item.name}
+                selected={effectivePersona === item.name}
                 onSelect={() => {
                   persona.onChange(item.name);
                   close();

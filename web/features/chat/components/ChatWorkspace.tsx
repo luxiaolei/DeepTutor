@@ -46,7 +46,7 @@ import { PageCustomizeButton } from "@/components/customization/PageCustomizeBut
 import StarterSuggestions from "@/components/chat/home/StarterSuggestions";
 import MakerOpening, { ParentStartConfirm } from "@/components/chat/home/MakerOpening";
 import { useAuthStatus } from "@/hooks/useAuthStatus";
-import { guidanceDensity, learnerCapabilityAllowed } from "@/lib/zaowu-home";
+import { composerPlaceholder, guidanceDensity, learnerCapabilityAllowed } from "@/lib/zaowu-home";
 import { confirmLearnerSessionStart } from "@/lib/zaowu-api";
 // Imported eagerly so the drawer shell is always mounted off-screen —
 // clicking a chip becomes a single CSS class flip, no chunk fetch + double
@@ -3035,6 +3035,7 @@ export default function ChatWorkspace() {
                 onSelectMemoryPicker={handleSelectMemoryPicker}
                 onClearPersona={handleClearPersona}
                 personaSelection={state.personaSelection}
+                lockedPersona={learnerHome ? auth.learningPolicy?.lockedPersona : undefined}
                 onPersonaSelectionChange={setPersonaSelection}
                 personaSelectorOpen={personaSelectorOpen}
                 onPersonaSelectorOpenChange={setPersonaSelectorOpen}
@@ -3105,7 +3106,12 @@ export default function ChatWorkspace() {
                     onWithdraw={withdrawQueuedMessage}
                   />
                 }
-                inputPlaceholder={askHint || undefined}
+                inputPlaceholder={composerPlaceholder({
+                  learner: learnerHome,
+                  hint: askHint,
+                  maker: t("What shall we make?"),
+                  adult: "",
+                }) || undefined}
                 inputPlaceholderCompletion={askHint}
               />
               {/* Starters sit between the composer and the spacer, so they ride

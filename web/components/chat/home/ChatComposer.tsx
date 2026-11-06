@@ -267,6 +267,7 @@ export default memo(function ChatComposer({
   onSelectPersonaPicker,
   onSelectMemoryPicker,
   onClearPersona,
+  lockedPersona,
   personaSelection,
   onPersonaSelectionChange,
   personaSelectorOpen,
@@ -414,6 +415,8 @@ export default memo(function ChatComposer({
    */
   personaSelection?: string;
   onPersonaSelectionChange?: (persona: string) => void;
+  /** Learner grant lock. The style chip shows this name instead of Default. */
+  lockedPersona?: string;
   personaSelectorOpen?: boolean;
   onPersonaSelectorOpenChange?: (open: boolean) => void;
   /** Main chat's session-level reply language, selected via /language. */
@@ -1123,7 +1126,11 @@ export default memo(function ChatComposer({
     onPersonaSelectionChange || onAnswerByChange
       ? {
           persona: onPersonaSelectionChange
-            ? { value: personaSelection ?? "", onChange: onPersonaSelectionChange }
+            ? {
+                value: personaSelection ?? "",
+                onChange: onPersonaSelectionChange,
+                locked: lockedPersona,
+              }
             : undefined,
           answerers: onAnswerByChange
             ? {
