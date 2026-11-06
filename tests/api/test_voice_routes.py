@@ -66,6 +66,35 @@ def test_tts_rejects_empty_text(client: TestClient) -> None:
     assert resp.status_code == 422  # pydantic min_length
 
 
+def test_maker_tts_uses_qwen_and_hides_provider_errors(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[str] = []
+
+    async def fake_maker(text: str, **_: Any):
+        calls.append(text)
+        return b"RIFFaudio", "audio/wav"
+
+    async def adult(*_: Any, **__: Any):
+        raise AssertionError("adult TTS must stay unused")
+
+    monkeypatch.setattr(voice_router, "synthesize_maker_speech", fake_maker)
+    monkeypatch.setattr(voice_router, "synthesize_speech", adult)
+    resp = client.post("/api/voice/tts", json={"text": "会动的。", "maker": True})
+    assert resp.status_code == 200
+    assert resp.content == b"RIFFaudio"
+    assert calls == ["会动的。"]
+
+    async def boom(*_: Any, **__: Any):
+        raise VoiceProviderError("upstream sk-secret")
+
+    monkeypatch.setattr(voice_router, "synthesize_maker_speech", boom)
+    failed = client.post("/api/voice/tts", json={"text": "会动的。", "maker": True})
+    assert failed.status_code == 503
+    assert failed.json()["detail"] == "这次没听成，再点一次。"
+    assert "sk-secret" not in failed.text
+
+
 def test_tts_provider_error_is_502(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     async def boom(*_: Any, **__: Any):
         raise VoiceProviderError("upstream down")

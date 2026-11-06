@@ -18,6 +18,7 @@ from deeptutor.services.voice import (
     synthesize_speech,
     transcribe_audio,
 )
+from deeptutor.services.voice.maker import MAKER_TTS_PUBLIC, synthesize_maker_speech
 from deeptutor.services.voice.audio import _parse_pcm_content_type, _pcm16_to_wav
 from deeptutor.services.voice.base import VoiceProviderTimeout
 
@@ -35,22 +36,43 @@ class TTSRequest(BaseModel):
     text: str = Field(..., min_length=1)
     voice: str | None = None
     format: str | None = None
+    # Young maker read-aloud. Forces Qwen flash + Serena and ignores the
+    # adult TTS selection. The key never leaves the server.
+    maker: bool = False
 
 
 @router.post("/tts")
 async def text_to_speech(payload: TTSRequest) -> Response:
     """Synthesize ``text`` to audio using the active TTS provider."""
     try:
-        audio, content_type = await synthesize_speech(
-            payload.text,
-            voice=payload.voice,
-            response_format=payload.format,
-        )
+        if payload.maker:
+            audio, content_type = await synthesize_maker_speech(payload.text)
+        else:
+            audio, content_type = await synthesize_speech(
+                payload.text,
+                voice=payload.voice,
+                response_format=payload.format,
+            )
     except ValueError as exc:  # missing/invalid configuration
+        if payload.maker:
+            logger.warning("Maker read-aloud is not configured")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=MAKER_TTS_PUBLIC
+            ) from exc
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except VoiceProviderTimeout as exc:
+        if payload.maker:
+            logger.warning("Maker read-aloud timed out")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=MAKER_TTS_PUBLIC
+            ) from exc
         raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=str(exc)) from exc
     except VoiceProviderError as exc:
+        if payload.maker:
+            logger.warning("Maker read-aloud failed (%s)", type(exc).__name__)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=MAKER_TTS_PUBLIC
+            ) from exc
         logger.warning("TTS provider error: %s", exc)
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     pcm_info = _parse_pcm_content_type(content_type)

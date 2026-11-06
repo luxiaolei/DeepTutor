@@ -745,6 +745,9 @@ def _learning_surface_for_path(
     # of /api/multi-user is account administration and stays denied.
     if method.upper() == "POST" and normalized == "/api/multi-user/session-start":
         return "chat"
+    # Learner read-aloud. Exact path only: speech-to-text stays denied.
+    if method.upper() == "POST" and normalized == "/api/voice/tts":
+        return "chat"
     return ""
 
 

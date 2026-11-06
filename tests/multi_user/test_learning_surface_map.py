@@ -65,6 +65,9 @@ from deeptutor.api.routers.auth import _learning_surface_for_path
         # router, including the guardian confirm route, stays denied.
         ("/api/multi-user/session-start", "POST", "chat"),
         ("/api/multi-user/session-start", "GET", ""),
+        ("/api/voice/tts", "POST", "chat"),
+        ("/api/voice/tts", "GET", ""),
+        ("/api/voice/stt", "POST", ""),
         ("/api/multi-user/learners/learner-1/session-start", "POST", ""),
         ("/api/multi-user/admin/resources", "GET", ""),
         ("", "GET", ""),

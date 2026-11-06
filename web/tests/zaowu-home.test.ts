@@ -184,6 +184,10 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
     path.resolve(process.cwd(), "features/chat/trace/TracePresentation.tsx"),
     "utf8",
   );
+  const speech = readFileSync(path.resolve(process.cwd(), "lib/maker-speech.ts"), "utf8");
+  assert.doesNotMatch(speech, /speechSynthesis/);
+  assert.match(speech, /maker:\s*true/);
+  assert.match(speech, /\/api\/voice\/tts/);
   assert.match(trace, /We are thinking together…/);
   assert.match(trace, /learner \? undefined : processSummary/);
 });

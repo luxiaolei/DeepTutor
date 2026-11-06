@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Volume2 } from "lucide-react";
 import {
   makerPicture,
@@ -10,7 +10,13 @@ import {
   type MakerPicture,
   type ZaowuDensity,
 } from "@/lib/zaowu-home";
-import { recentlySpoken, speakMaker, stopMakerSpeech } from "@/lib/maker-speech";
+import {
+  MAKER_SPEECH_RETRY,
+  recentlySpoken,
+  speakMaker,
+  stopMakerSpeech,
+  subscribeMakerSpeechFailure,
+} from "@/lib/maker-speech";
 
 const DISC: Record<MakerPicture, string> = {
   ball: "#ffb020",
@@ -227,17 +233,26 @@ export function MakerChoiceButton({
 }
 
 export function MakerSpeakerButton({ text }: { text: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => subscribeMakerSpeechFailure(setFailed), []);
   return (
-    <button
-      type="button"
-      data-maker-speak="true"
-      aria-label={"再听一遍"}
-      onClick={() => speakMaker(text)}
-      className="inline-flex h-14 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-5 text-base text-[var(--foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
-    >
-      <Volume2 size={26} strokeWidth={1.7} aria-hidden />
-      <span>{"再听一遍"}</span>
-    </button>
+    <div className="flex flex-col items-center gap-2">
+      <button
+        type="button"
+        data-maker-speak="true"
+        aria-label={"再听一遍"}
+        onClick={() => {
+          void speakMaker(text);
+        }}
+        className="inline-flex h-14 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-5 text-base text-[var(--foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+      >
+        <Volume2 size={26} strokeWidth={1.7} aria-hidden />
+        <span>{"再听一遍"}</span>
+      </button>
+      {failed ? (
+        <p className="text-sm text-[var(--muted-foreground)]">{MAKER_SPEECH_RETRY}</p>
+      ) : null}
+    </div>
   );
 }
 
@@ -245,7 +260,7 @@ export function MakerSpeakerButton({ text }: { text: string }) {
 export function useSpokenMakerPrompt(enabled: boolean, text: string) {
   useEffect(() => {
     if (!enabled || !text.trim() || recentlySpoken(text)) return;
-    speakMaker(text);
+    void speakMaker(text);
     return () => stopMakerSpeech();
   }, [enabled, text]);
 }
