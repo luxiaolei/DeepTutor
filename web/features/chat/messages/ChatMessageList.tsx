@@ -12,7 +12,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { MakerChoiceRow } from "@/components/chat/home/MakerChoices";
+import { MakerChoiceRow, MakerPicture } from "@/components/chat/home/MakerChoices";
 import {
   learnerStyleLabel,
   makerChoiceLines,
@@ -2733,7 +2733,17 @@ export const ChatMessageList = memo(function ChatMessageList({
                 </div>
               );
             })()}
-            {(showActions || costSummary || showDelete) && (
+            {learnerChrome && showRegenerate ? (
+              <button
+                type="button"
+                onClick={() => onRegenerateMessage()}
+                className="mt-3 inline-flex min-h-12 items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 text-base text-[var(--foreground)]"
+              >
+                <MakerPicture name="swap" />
+                <span>{"再做一次"}</span>
+              </button>
+            ) : null}
+            {!learnerChrome && (showActions || costSummary || showDelete) && (
               <div className="mt-3 flex items-center">
                 {(showActions || showDelete) && (
                   <div className="flex shrink-0 items-center gap-1">

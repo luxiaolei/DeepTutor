@@ -198,7 +198,7 @@ class VisualizeCapability(TurnCapability):
             if not prose:
                 prose = i18n.t(
                     "maker_talk",
-                    "先选一个再做。想做会动的，会讲故事的，还是会出主意的？",
+                    "先选一个再做。想做会动的，会讲故事的，还是会发光的？",
                 )
             await emit_capability_result(
                 stream,

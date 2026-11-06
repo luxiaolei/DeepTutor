@@ -233,6 +233,7 @@ export function CategoryBody({
           {navVisibleUnderPolicy('/chat', nav.allowedSurfaces) && (
             <OverviewRow href="/chat" label={t('navigation.chat')} icon={MessageCircle} />
           )}
+          {nav.allowedSurfaces === null && (
           <Section title={t('navigation.workspace')}>
             {[
               { href: '/calendar', label: 'Calendar', icon: CalendarDays },
@@ -249,6 +250,7 @@ export function CategoryBody({
                 />
               ))}
           </Section>
+          )}
           {sessions}
         </>
       )}

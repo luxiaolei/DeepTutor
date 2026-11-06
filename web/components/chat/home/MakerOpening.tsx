@@ -55,11 +55,23 @@ export default function MakerOpening({
   const speak = makerSpeaks(density);
   useSpokenMakerPrompt(speak, spoken);
 
+  const heading = opening.heading.split("东西");
   return (
-    <div className="flex w-full flex-col items-center gap-6" data-maker-density={density}>
-      <h1 className="max-w-[18em] text-center font-serif text-[32px] font-medium leading-[1.25] tracking-[-0.015em] text-[var(--foreground)] sm:text-[40px]">
-        {opening.heading}
+    <div className="flex w-full flex-col items-center gap-5" data-maker-density={density}>
+      <h1 className="max-w-[16em] text-center font-serif text-[28px] font-medium leading-[1.3] tracking-[-0.015em] text-[var(--foreground)] sm:text-[34px]">
+        {heading.length > 1 ? (
+          <>
+            {heading[0]}
+            <span className="whitespace-nowrap">{"东西"}</span>
+            {heading.slice(1).join("东西")}
+          </>
+        ) : (
+          opening.heading
+        )}
       </h1>
+      <p className="text-center text-sm text-[var(--muted-foreground)]">
+        {"请坐在旁边，让孩子点图。"}
+      </p>
       {speak ? <MakerSpeakerButton text={spoken} /> : null}
       <div
         className={

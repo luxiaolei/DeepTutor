@@ -121,6 +121,15 @@ export default function AnswerModeMenu({
     defaultLabel: t("Default"),
     zaowuLabel: t("Zaowu"),
   });
+  if (persona?.locked && !answerers) {
+    return (
+      <span className="dt-tray-button" aria-disabled="true" data-zaowu-locked-style="true">
+        {icon}
+        <span>{t("Preferences")}</span>
+        <span className="dt-tray-value">{value}</span>
+      </span>
+    );
+  }
   if (partner || kind === "partner") {
     icon = partner ? <PartnerFace partner={partner} size={16} /> : icon;
     value = partner?.name ?? id;

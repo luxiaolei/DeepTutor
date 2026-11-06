@@ -43,7 +43,9 @@ it("speaks the youngest opening and keeps a speaker the parent can tap", async (
   const { speak } = installSpeech();
   render(<MakerOpening density="early" onPick={vi.fn()} />);
   expect(screen.getByRole("button", { name: "会讲故事的" }).querySelector("[data-maker-picture='story']")).toBeTruthy();
+  expect(screen.getByText("请坐在旁边，让孩子点图。")).toBeVisible();
   const speaker = screen.getByRole("button", { name: "再听一遍" });
+  expect(speaker).toHaveTextContent("再听一遍");
   await waitFor(() => expect(speak).toHaveBeenCalled());
   const spoken = speak.mock.calls.at(-1)?.[0] as { text: string };
   expect(spoken.text).toContain("会动的");

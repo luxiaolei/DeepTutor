@@ -1535,6 +1535,7 @@ export function StreamingStatus({
   answerer,
   showMark = true,
   traceBounds,
+  learner = false,
 }: {
   events: StreamEvent[];
   isStreaming?: boolean;
@@ -1557,6 +1558,8 @@ export function StreamingStatus({
   // Who is doing the thinking — partner chat passes the partner's name so
   // the status reads "Ada Exploring…" instead of the product name.
   agentName?: string;
+  /** Child waiting copy: no product name, no clock, no tool count. */
+  learner?: boolean;
   // Partner chat shows the partner avatar beside this row, which already
   // signals "who / working", so it hides the activity mark to avoid two
   // icons fighting on one line.
@@ -1590,8 +1593,20 @@ export function StreamingStatus({
   );
 
   const name = agentName?.trim() || "DeepTutor";
-  let modeLabel = t("{{name}} Reasoning…", { name });
-  if (mode === "tool_using") modeLabel = t("Tool Calling…");
+  const waiting = (
+    <span className="inline-flex items-center gap-2">
+      {t("We are thinking together…")}
+      <span className="zaowu-wait" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </span>
+    </span>
+  );
+  let modeLabel: string | ReactNode = t("{{name}} Reasoning…", { name });
+  if (learner) {
+    modeLabel = mode === "responded" && !isStreaming ? t("We thought of it") : waiting;
+  } else if (mode === "tool_using") modeLabel = t("Tool Calling…");
   else if (mode === "planning") modeLabel = t("{{name}} Planning…", { name });
   // ``responding`` remains a useful transport/trace distinction, but it is
   // not a second user-facing phase. Keep the one continuous activity surface
@@ -1606,11 +1621,12 @@ export function StreamingStatus({
   else if (mode === "responded")
     modeLabel = agentName?.trim() ? t("Done") : t("DeepTutor responded.");
 
-  const label =
-    getExploreContextStatusLabel(events, t, Boolean(isStreaming)) ??
-    getDeepResearchStatusLabel(events, t, Boolean(isStreaming)) ??
-    getReasoningProgressStatusLabel(events, t, Boolean(isStreaming)) ??
-    modeLabel;
+  const label = learner
+    ? modeLabel
+    : getExploreContextStatusLabel(events, t, Boolean(isStreaming)) ??
+      getDeepResearchStatusLabel(events, t, Boolean(isStreaming)) ??
+      getReasoningProgressStatusLabel(events, t, Boolean(isStreaming)) ??
+      modeLabel;
 
   // Single turn-level clock. Ticks every second while the turn is in
   // flight and freezes on the final elapsed time once the answer ends —
@@ -1622,8 +1638,7 @@ export function StreamingStatus({
     Boolean(isStreaming),
     traceBounds,
   );
-  const durationLabel =
-    turnSeconds != null ? formatTurnDuration(turnSeconds) : null;
+  const durationLabel = learner || turnSeconds == null ? null : formatTurnDuration(turnSeconds);
 
   if (answerer) {
     // Their mark where the orb would be, their name held still, and what
@@ -1905,21 +1920,22 @@ export function AssistantActivity({
         events={events}
         isStreaming={isStreaming}
         content={content}
-        expandable={expandable}
+        expandable={learner ? false : expandable}
         expanded={open}
         onToggle={() => {
           const next = !open;
           setUserOpen(next);
           onTraceToggle?.(next);
         }}
-        summary={processSummary}
+        summary={learner ? undefined : processSummary}
         agentName={agentName}
+        learner={learner}
         answerer={answerer}
         showMark={showMark}
         className={headerClassName}
         traceBounds={traceBounds}
       />
-      {expandable ? (
+      {!learner && expandable ? (
         <ActivityFold open={open}>
           {/* The process hangs from a faint guide line on the header's own
               left edge — where the activity mark sits — with its content

@@ -1150,6 +1150,15 @@ export default memo(function ChatComposer({
           onOpenChange: onPersonaSelectorOpenChange,
         }
       : undefined;
+  const learnerAnswer: AnswerModeProps | undefined = learnerChrome
+    ? {
+        persona: {
+          value: personaSelection ?? "",
+          onChange: () => undefined,
+          locked: lockedPersona || "zaowu",
+        },
+      }
+    : undefined;
   // Working with partners: DeepTutor still answers, having asked them first.
   const partnerLinks: PartnerLinkProps | undefined =
     onSelectAgent || onSelectPartner || onSelectPartnerGroup
@@ -1664,19 +1673,24 @@ export default memo(function ChatComposer({
             </div>
           </div>
         </div>
-        {trayMode || (resourceCatalog && resourceSelection && onResourceSelectionChange) || trayCreate || answerMode || partnerLinks || trayEnd ? (
+        {(learnerChrome ? learnerAnswer : trayMode) ||
+        (!learnerChrome && resourceCatalog && resourceSelection && onResourceSelectionChange) ||
+        (!learnerChrome && trayCreate) ||
+        (learnerChrome ? learnerAnswer : answerMode) ||
+        (!learnerChrome && partnerLinks) ||
+        trayEnd ? (
           <ComposerTray
             controls={controls}
             placement={hasMessages || docked ? "up" : "down"}
-            mode={trayMode}
+            mode={learnerChrome ? undefined : trayMode}
             resources={
-              resourceCatalog && resourceSelection && onResourceSelectionChange
+              !learnerChrome && resourceCatalog && resourceSelection && onResourceSelectionChange
                 ? { catalog: resourceCatalog, selection: resourceSelection, onChange: onResourceSelectionChange }
                 : undefined
             }
-            create={trayCreate}
-            partners={partnerLinks}
-            answer={answerMode}
+            create={learnerChrome ? undefined : trayCreate}
+            partners={learnerChrome ? undefined : partnerLinks}
+            answer={learnerChrome ? learnerAnswer : answerMode}
             end={trayEnd}
           />
         ) : null}

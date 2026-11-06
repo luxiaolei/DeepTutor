@@ -29,6 +29,7 @@ const DISC: Record<MakerPicture, string> = {
   direction: "#86c5a6",
   motion: "#7eb6ff",
   swap: "#b7b0f0",
+  glow: "#ffe08a",
   spark: "#f6c945",
 };
 
@@ -36,7 +37,13 @@ function PictureShape({ name }: { name: MakerPicture }) {
   const ink = "#3f3428";
   switch (name) {
     case "ball":
-      return <circle cx="24" cy="26" r="12" fill={ink} />;
+      return (
+        <>
+          <circle cx="24" cy="25" r="14" fill={ink} />
+          <path d="M12 22c4-7 12-8 18-2" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
+          <circle cx="31" cy="18" r="2.4" fill="#fff" />
+        </>
+      );
     case "star":
       return (
         <polygon
@@ -99,6 +106,19 @@ function PictureShape({ name }: { name: MakerPicture }) {
           <ellipse cx="28" cy="24" rx="14" ry="9" fill={ink} />
           <circle cx="36" cy="21" r="1.8" fill="#fff" />
           <path d="M22 16c2 3 2 13 0 16" fill="none" stroke="#fff" strokeWidth="1.6" />
+        </>
+      );
+    case "glow":
+      return (
+        <>
+          <circle cx="24" cy="24" r="7" fill={ink} />
+          <path
+            d="M24 6v5M24 37v5M6 24h5M37 24h5M11 11l3.5 3.5M33.5 33.5L37 37M37 11l-3.5 3.5M14.5 33.5L11 37"
+            fill="none"
+            stroke={ink}
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
         </>
       );
     case "swap":
@@ -213,9 +233,10 @@ export function MakerSpeakerButton({ text }: { text: string }) {
       data-maker-speak="true"
       aria-label={"再听一遍"}
       onClick={() => speakMaker(text)}
-      className="inline-flex h-20 w-20 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+      className="inline-flex h-14 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-5 text-base text-[var(--foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
     >
-      <Volume2 size={36} strokeWidth={1.7} aria-hidden />
+      <Volume2 size={26} strokeWidth={1.7} aria-hidden />
+      <span>{"再听一遍"}</span>
     </button>
   );
 }

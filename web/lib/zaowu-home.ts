@@ -27,8 +27,12 @@ const EARLY: ZaowuChoice[][] = [
     { label: "会讲故事的", prompt: "我想做一个会讲故事的小东西。" },
   ],
   [
-    { label: "会出主意的", prompt: "我想做一个会出主意的小东西。" },
+    { label: "会发光的", prompt: "我想做一个会发光的小东西。" },
     { label: "给家人看的", prompt: "我想做一个能给家人看的小东西。" },
+  ],
+  [
+    { label: "会唱歌的", prompt: "我想做一个会唱歌的小东西。" },
+    { label: "会画画的", prompt: "我想做一个会画画的小东西。" },
   ],
 ];
 
@@ -36,7 +40,7 @@ const MIDDLE: ZaowuChoice[][] = [
   [
     { label: "能玩的", prompt: "我想做一个能玩的小作品。" },
     { label: "能讲给同学听的", prompt: "我想做一个能讲给同学听的小作品。" },
-    { label: "我自己的点子", prompt: "我有一个自己的点子，想先说说。" },
+    { label: "会发光的", prompt: "我想做一个会发光的小作品。" },
   ],
   [
     { label: "小故事", prompt: "我想做一本很短的小故事。" },
@@ -77,7 +81,7 @@ export function makerOpening(
   const choices = decks[Math.abs(page) % decks.length] ?? decks[0];
   const heading =
     density === "early"
-      ? "今天我们一起做一个能给家人看的小东西。"
+      ? "今天我们做个小东西，给家人看。"
       : density === "middle"
         ? "你想做一个能玩的，还是能讲给同学听的？"
         : "今天做作品。你已经有点子了，还是先看几个方向？";
@@ -174,9 +178,11 @@ export type MakerPicture =
   | "direction"
   | "motion"
   | "swap"
+  | "glow"
   | "spark";
 
 const PICTURE_RULES: ReadonlyArray<readonly [RegExp, MakerPicture]> = [
+  [/光|亮/, "glow"],
   [/鱼/, "fish"],
   [/球/, "ball"],
   [/星/, "star"],

@@ -33,6 +33,11 @@ test("younger openings use two large choices", () => {
   const opening = makerOpening("early");
   assert.equal(opening.choices.length, 2);
   assert.match(opening.heading, /家人/);
+  assert.match(opening.heading, /东西/);
+  const refresh = makerOpening("early", 1);
+  assert.equal(refresh.choices[0]?.label, "会发光的");
+  assert.equal(refresh.choices[1]?.label, "给家人看的");
+  assert.equal(makerOpening("early", 2).choices[0]?.label, "会唱歌的");
 });
 
 test("learner chrome uses the maker name, not the adult defaults", () => {
@@ -119,6 +124,9 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.equal(makerPicture("会跳的小球"), "ball");
   assert.equal(makerPicture("会摆动的小星星"), "star");
   assert.equal(makerPicture("会摆尾的小鱼"), "fish");
+  assert.equal(makerPicture("会发光的"), "glow");
+  assert.equal(makerPicture("会唱歌的"), "music");
+  assert.equal(makerPicture("会画画的"), "draw");
   assert.equal(learnerActivityLabel("zaowu"), "造物");
   assert.equal(learnerActivityLabel("read_skill"), null);
   assert.equal(learnerActivityLabel("读取技能"), "读取技能");
@@ -165,10 +173,19 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(list, /<MakerChoiceRow/);
   assert.match(workspace, /makerDensity=\{learnerHome \? makerDensity : undefined\}/);
   assert.match(workspace, /speakMaker\(/);
-  assert.match(workspace, /overflow-y-auto px-6 py-8/);
+  assert.match(workspace, /overflow-x-hidden overflow-y-auto px-6 py-6/);
   assert.match(workspace, /learnerChrome=\{learnerHome\}/);
   assert.match(choices, /grid-cols-2/);
   assert.match(opening, /picture="swap"/);
+  assert.match(opening, /whitespace-nowrap/);
+  assert.match(opening, /请坐在旁边，让孩子点图/);
+  assert.match(choices, /再听一遍/);
+  const trace = readFileSync(
+    path.resolve(process.cwd(), "features/chat/trace/TracePresentation.tsx"),
+    "utf8",
+  );
+  assert.match(trace, /We are thinking together…/);
+  assert.match(trace, /learner \? undefined : processSummary/);
 });
 
 test("learner home hides research capabilities and keeps visualize", () => {
