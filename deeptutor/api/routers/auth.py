@@ -741,6 +741,10 @@ def _learning_surface_for_path(
     # /api/settings would also open catalog writes on the same router (#1222).
     if method.upper() == "GET" and normalized == "/api/settings/llm-options":
         return "chat"
+    # The parent tap that starts a learner sitting. Exact path only: the rest
+    # of /api/multi-user is account administration and stays denied.
+    if method.upper() == "POST" and normalized == "/api/multi-user/session-start":
+        return "chat"
     return ""
 
 
