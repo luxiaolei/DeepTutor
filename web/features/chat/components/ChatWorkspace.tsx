@@ -53,6 +53,7 @@ import {
   MAKER_AFTER_PICK_PLACEHOLDER,
   MAKER_OTHER_CHOICES_PROMPT,
   makerOpening,
+  makerPickAck,
   makerPickStarted,
   makerSpeaks,
   spokenMakerPrompt,
@@ -1274,18 +1275,31 @@ export default function ChatWorkspace() {
     if (!learnerHome || state.isStreaming) return;
     const container = messagesContainerRef.current;
     if (!container) return;
-    const frame = requestAnimationFrame(() => {
+    const align = () => {
       const preview = container.querySelector("[data-maker-preview]");
       const rows = container.querySelectorAll("[data-maker-choice-row]");
-      const last = preview ?? rows[rows.length - 1];
-      if (!(last instanceof HTMLElement)) return;
-      const clear = 72;
+      const target = preview instanceof HTMLElement ? preview : rows[rows.length - 1];
+      if (!(target instanceof HTMLElement)) return;
+      // Keep the latest control (the picture row, or 「跳一下」 at the bottom
+      // of the preview) above the composer. A short window used to leave
+      // only the adult code buttons on screen.
+      const clear = preview instanceof HTMLElement ? 88 : 72;
       const overflow =
-        last.getBoundingClientRect().bottom -
+        target.getBoundingClientRect().bottom -
         (container.getBoundingClientRect().bottom - clear);
       if (overflow > 8) container.scrollTop += overflow;
-    });
-    return () => cancelAnimationFrame(frame);
+    };
+    const frame = requestAnimationFrame(align);
+    const preview = container.querySelector("[data-maker-preview]");
+    const observer =
+      preview instanceof HTMLElement && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => align())
+        : null;
+    if (preview instanceof HTMLElement) observer?.observe(preview);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+    };
   }, [learnerHome, state.isStreaming, state.messages, messagesContainerRef]);
   useEffect(() => {
     if (!awaitingUserCard) return;
@@ -2947,6 +2961,9 @@ export default function ChatWorkspace() {
                         onMakerChoice={
                           learnerHome
                             ? (choice) => {
+                                if (makerSpeaks(makerDensity)) {
+                                  void speakMaker(makerPickAck(choice));
+                                }
                                 void handleSend(choice);
                               }
                             : undefined

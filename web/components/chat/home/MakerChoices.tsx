@@ -34,6 +34,10 @@ const DISC: Record<MakerPicture, string> = {
   idea: "#f6d36b",
   direction: "#86c5a6",
   pinwheel: "#f08b6a",
+  red: "#e85d4c",
+  blue: "#4aa3e0",
+  high: "#7eb6ff",
+  gentle: "#b7e4c7",
   motion: "#7eb6ff",
   swap: "#b7b0f0",
   glow: "#ffe08a",
@@ -167,6 +171,24 @@ function PictureShape({ name }: { name: MakerPicture }) {
       );
     case "direction":
       return <polygon fill={ink} points="24,8 40,36 24,30 8,36" />;
+    case "red":
+    case "blue":
+      return <circle cx="24" cy="24" r="14" fill="#fff" />;
+    case "high":
+      return (
+        <>
+          <circle cx="24" cy="12" r="6" fill={ink} />
+          <path d="M24 20v16" fill="none" stroke={ink} strokeWidth="3" strokeLinecap="round" />
+          <path d="M16 28l8-8 8 8" fill="none" stroke={ink} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      );
+    case "gentle":
+      return (
+        <>
+          <path d="M8 20c8 8 24 8 32 0" fill="none" stroke={ink} strokeWidth="3" strokeLinecap="round" />
+          <circle cx="24" cy="32" r="5" fill={ink} />
+        </>
+      );
     case "pinwheel":
       return (
         <>

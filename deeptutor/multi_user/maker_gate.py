@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 TALK = "talk"
+DETAIL = "detail"
 SEED = "seed"
 REVISE = "revise"
 
@@ -18,7 +19,7 @@ SEED_MARKER_ALT = "data-zaowu-stage='seed'"
 SEED_HTML_MAX_CHARS = 2400
 SEED_OTHER_MAX_CHARS = 900
 
-_STAGES = {TALK, SEED, REVISE}
+_STAGES = {TALK, DETAIL, SEED, REVISE}
 
 
 def decide_maker_stage(
@@ -26,7 +27,12 @@ def decide_maker_stage(
     current_message: str,
 ) -> str:
     """Stage for one learner turn, from prior messages plus the new one."""
-    commits = prior_visualization_commits(history or [])
+    if _asks_for_another_piece(current_message):
+        return TALK
+    # 「还想做另一个吗？」 starts a new piece. Earlier picks and the previous
+    # seed no longer decide this turn.
+    scoped = _piece_history(history or [])
+    commits = prior_visualization_commits(scoped)
     if commits >= 1:
         return REVISE
     # 「看别的」 asks for another pair. It is not a choice, so the turn stays
@@ -34,8 +40,14 @@ def decide_maker_stage(
     # wait on submit_visualization, which never saved a reply.
     if _asks_for_other_choices(current_message):
         return TALK
-    if _user_turns(history or [], current_message) >= 2:
+    # The first picture tap is not a finished toy. The child still chooses
+    # how it should be (high or gentle, fast or slow, red or blue). Only the
+    # next tap may open the seed.
+    picks = _real_picks(scoped, current_message)
+    if picks >= 2:
         return SEED
+    if picks == 1:
+        return DETAIL
     return TALK
 
 
@@ -132,23 +144,69 @@ def stage_from_context(context: Any) -> str | None:
     return stage
 
 
-def _asks_for_other_choices(current_message: str) -> bool:
-    text = str(current_message or "")
-    return any(phrase in text for phrase in ("再看两个", "再换两个", "看别的"))
+def detail_choice_reply(pick: str) -> str:
+    """Instant next picture pair. No model call, so the child is not left waiting."""
+    name = str(pick or "").strip() or "这个"
+    if any(word in name for word in ("跳", "球")):
+        first, second = "跳得高高", "轻轻跳跳"
+    elif any(word in name for word in ("转", "风", "摇", "摆")):
+        first, second = "转得快一点", "慢慢转"
+    else:
+        first, second = "红红的", "蓝蓝的"
+    return f"好，我们就做{name}。\n你想先做哪一个？\n1. {first}\n2. {second}"
 
 
-def _user_turns(history: list[dict[str, Any]], current_message: str) -> int:
-    prior = 0
+def _is_real_pick(text: str) -> bool:
+    value = str(text or "").strip()
+    if not value or _asks_for_other_choices(value):
+        return False
+    if "我想做" in value:
+        return False
+    return True
+
+
+def _real_picks(history: list[dict[str, Any]], current_message: str) -> int:
+    """Picture taps after a choice has been offered. The opening sentence is not one."""
+    seen_assistant = False
+    count = 0
     for message in history:
         if not isinstance(message, dict):
             continue
-        if str(message.get("role") or "") != "user":
+        role = str(message.get("role") or "")
+        if role == "assistant":
+            seen_assistant = True
+        elif role == "user" and seen_assistant and _is_real_pick(str(message.get("content") or "")):
+            count += 1
+    if seen_assistant and _is_real_pick(current_message):
+        count += 1
+    return count
+
+
+def _asks_for_another_piece(current_message: str) -> bool:
+    text = str(current_message or "")
+    return any(phrase in text for phrase in ("还想做另一个", "再做一个"))
+
+
+def _piece_history(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Messages since the latest invitation to make a different thing.
+
+    The invitation itself stays, so the next picture tap still counts as a
+    choice. Everything before it belonged to the piece they already tried.
+    """
+    start = 0
+    for index, message in enumerate(history):
+        if not isinstance(message, dict):
             continue
-        if str(message.get("content") or "").strip():
-            prior += 1
-    if str(current_message or "").strip():
-        return prior + 1
-    return prior
+        if str(message.get("role") or "") != "assistant":
+            continue
+        if "还想做另一个" in str(message.get("content") or ""):
+            start = index
+    return history[start:]
+
+
+def _asks_for_other_choices(current_message: str) -> bool:
+    text = str(current_message or "")
+    return any(phrase in text for phrase in ("再看两个", "再换两个", "看别的"))
 
 
 __all__ = [
@@ -156,8 +214,10 @@ __all__ = [
     "REVISE",
     "SEED",
     "SEED_MARKER",
+    "DETAIL",
     "TALK",
     "decide_maker_stage",
+    "detail_choice_reply",
     "prior_visualization_commits",
     "route_maker_turn",
     "seed_payload_error",

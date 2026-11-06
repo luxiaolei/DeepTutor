@@ -14,6 +14,7 @@ import {
   MAKER_OTHER_CHOICES_PROMPT,
   makerChoiceLines,
   makerInvitesChoice,
+  makerPickAck,
   makerPickStarted,
   makerPreviewWords,
   makerOpening,
@@ -128,7 +129,14 @@ test("maker chips send a choice and numbered replies become buttons", () => {
   assert.equal(makerPickStarted("会跳的小球"), true);
   assert.equal(makerPickStarted("我想做一个会动的小东西。"), false);
   assert.equal(makerPickStarted(MAKER_OTHER_CHOICES_PROMPT), false);
-  assert.match(makerPreviewWords("", "<button>跳一下</button>", "会跳的小球"), /点「跳一下」试试/);
+  assert.match(makerPreviewWords("", "<button>跳一下</button>", "会跳的小球"), /点「跳一下」试试，再给旁边的人看/);
+  assert.equal(makerPickAck("会跳的小球"), "好，我们就做会跳的小球。");
+  assert.equal(makerPicture("跳得高高"), "high");
+  assert.equal(makerPicture("轻轻跳跳"), "gentle");
+  assert.equal(makerPicture("红红的"), "red");
+  assert.equal(makerPicture("蓝蓝的"), "blue");
+  assert.equal(makerPicture("转得快一点"), "motion");
+  assert.equal(makerPicture("慢慢转"), "pinwheel");
   assert.deepEqual(
     makerChoiceLines("会动的小东西很有趣！\n你想先做哪一个？\n1.会跳的小球\n2．会摆尾巴的小鱼"),
     ["会跳的小球", "会摆尾巴的小鱼"],
@@ -208,6 +216,11 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(list, /heading=\{choiceProse\}/);
   assert.match(list, /看别的/);
   assert.match(list, /pickIndex < 0 && !isStreaming && makerChoiceLines/);
+  assert.match(list, /makerChoices\.length > 0 && !choicesLocked/);
+  assert.match(list, /lastPickIndex >= 0 && i < lastPickIndex/);
+  assert.match(workspace, /speakMaker\(makerPickAck\(choice\)\)/);
+  assert.match(workspace, /MAKER_AFTER_PICK_PLACEHOLDER/);
+  assert.match(workspace, /learnerHome \? null : \(\s*<TurnNavigator/s);
   assert.match(list, /withoutInProgressChoiceLines/);
   assert.equal(
     withoutInProgressChoiceLines("会动的小东西真有趣！\n你想先做哪一个？\n1. 会跳的小球\n2. 会转的小风车"),

@@ -1409,12 +1409,11 @@ export const AssistantMessage = memo(function AssistantMessage({
           events={events}
         />
       ) : null}
-      {makerChoices.length > 0 ? (
+      {makerChoices.length > 0 && !choicesLocked ? (
         <MakerChoiceRow
           density={makerDensity}
           heading={choiceProse}
           choices={makerChoices}
-          locked={choicesLocked || !onMakerChoice}
           onPick={(choice) => onMakerChoice?.(choice)}
         />
       ) : null}
@@ -2540,6 +2539,10 @@ export const ChatMessageList = memo(function ChatMessageList({
   const pickIndex = messages.findIndex(
     (message) => message.role === "user" && makerPickStarted(message.content),
   );
+  let lastPickIndex = -1;
+  messages.forEach((message, index) => {
+    if (message.role === "user" && makerPickStarted(message.content)) lastPickIndex = index;
+  });
   const lastRenderedAssistantIndex = useMemo(() => {
     for (let idx = messageRows.length - 1; idx >= 0; idx -= 1) {
       if (messageRows[idx].msg.role === "assistant")
@@ -2743,7 +2746,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                 activityName={activityName}
                 makerDensity={makerDensity}
                 learnerChrome={learnerChrome}
-                choicesLocked={pickIndex >= 0 && i < pickIndex}
+                choicesLocked={lastPickIndex >= 0 && i < lastPickIndex}
                 researchRequestSnapshot={
                   pairedUserMessage?.requestSnapshot ?? null
                 }

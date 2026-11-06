@@ -137,7 +137,13 @@ export const MAKER_OTHER_CHOICES_PROMPT =
   "再看两个不一样的。我还没选，先不要做出来。";
 
 /** Placeholder once a picture has been chosen. The choice screen keeps the shorter line. */
-export const MAKER_AFTER_PICK_PLACEHOLDER = "看一看，想改哪里？";
+export const MAKER_AFTER_PICK_PLACEHOLDER = "先点上面的按钮试试。";
+
+/** Said the moment a picture card is tapped, before any making starts. */
+export function makerPickAck(choice: string): string {
+  const name = choice.trim() || "这个";
+  return `好，我们就做${name}。`;
+}
 
 /** A real pick, not the opening direction and not the hidden 「看别的」 ask. */
 export function makerPickStarted(text: string): boolean {
@@ -153,7 +159,7 @@ export function makerPreviewWords(content: string, html: string, title: string):
   const button = html.match(/<button\b[^>]*>([^<]{1,16})<\/button>/i)?.[1]?.replace(/\s+/g, "").trim();
   const name = title.replace(/^HTML\s*[·.]\s*/i, "").trim();
   if (button && spoken.includes(button)) return spoken;
-  const cue = button ? `点「${button}」试试。` : "看一看。";
+  const cue = button ? `点「${button}」试试，再给旁边的人看。` : "看一看，再给旁边的人看。";
   if (!spoken) return name ? `好，${name}。${cue}` : cue;
   return `${spoken}${/[。！？]$/.test(spoken) ? "" : "。"}${cue}`;
 }
@@ -264,6 +270,10 @@ export type MakerPicture =
   | "fish"
   | "idea"
   | "direction"
+  | "red"
+  | "blue"
+  | "high"
+  | "gentle"
   | "pinwheel"
   | "motion"
   | "swap"
@@ -286,7 +296,12 @@ const PICTURE_RULES: ReadonlyArray<readonly [RegExp, MakerPicture]> = [
   [/猫|狗|动物|鸟/, "animal"],
   [/主意|点子|想法/, "idea"],
   [/方向/, "direction"],
-  [/风车/, "pinwheel"],
+  [/红/, "red"],
+  [/蓝/, "blue"],
+  [/高高|跳得高/, "high"],
+  [/轻轻/, "gentle"],
+  [/快/, "motion"],
+  [/风车|转得|慢慢转/, "pinwheel"],
   [/动|转|摆|跳|风/, "motion"],
 ];
 

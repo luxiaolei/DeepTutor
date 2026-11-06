@@ -118,7 +118,7 @@ function ChartJsRenderer({ config }: { config: string }) {
 function HtmlRenderer({ html, compact = false }: { html: string; compact?: boolean }) {
   const { t } = useTranslation();
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(compact ? 300 : 560);
+  const [height, setHeight] = useState(compact ? 160 : 560);
 
   const prepared = useMemo(() => prepareIframeHtml(html || ""), [html]);
 
@@ -146,7 +146,9 @@ function HtmlRenderer({ html, compact = false }: { html: string; compact?: boole
         Number.isFinite(data.height)
       ) {
         const next = Math.ceil(data.height) + 8;
-        setHeight(compact ? Math.min(320, Math.max(220, next)) : Math.min(2400, Math.max(240, next)));
+        // A learner preview is only as tall as the scene. A tall floor left
+        // an empty band under a short page and pushed 「跳一下」 off a 640px window.
+        setHeight(compact ? Math.min(360, Math.max(96, next)) : Math.min(2400, Math.max(240, next)));
       }
     };
     window.addEventListener("message", onMessage);
@@ -189,7 +191,7 @@ function HtmlRenderer({ html, compact = false }: { html: string; compact?: boole
         title={t("HTML visualization")}
         sandbox="allow-scripts"
         className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)]"
-        style={{ minHeight: compact ? 220 : 320, height: compact ? Math.min(height, 320) : height }}
+        style={{ height }}
       />
     </div>
   );

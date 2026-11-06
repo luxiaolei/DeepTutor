@@ -6,7 +6,9 @@ from deeptutor.multi_user.maker_gate import (
     REVISE,
     SEED,
     TALK,
+    DETAIL,
     decide_maker_stage,
+    detail_choice_reply,
     route_maker_turn,
     seed_payload_error,
 )
@@ -87,7 +89,7 @@ def test_one_sentence_stays_in_talk_and_a_seed_is_not_a_finished_page():
             ],
             "会动的",
         )
-        == SEED
+        == DETAIL
     )
     assert (
         decide_maker_stage(
@@ -104,6 +106,12 @@ def test_one_sentence_stays_in_talk_and_a_seed_is_not_a_finished_page():
         {"role": "assistant", "content": '<div data-zaowu-stage="seed"></div>'},
     ]
     assert decide_maker_stage(history, "太阳太大了") == REVISE
+    assert decide_maker_stage(history, "还想做另一个") == TALK
+    asked = [
+        *history,
+        {"role": "assistant", "content": "还想做另一个吗？\n1. 会画画的\n2. 会唱歌的"},
+    ]
+    assert decide_maker_stage(asked, "会画画的") == DETAIL
     finished = (
         "<!DOCTYPE html><html><body data-zaowu-stage=\"seed\">"
         + ("<button>go</button>" * 3)
@@ -130,8 +138,22 @@ def test_chat_seed_turn_is_routed_to_visualize():
         allowed_capabilities={"chat", "visualize", "immersive_reading"},
         learning=True,
     )
-    assert stage == SEED
-    assert capability == "visualize"
+    assert stage == DETAIL
+    assert capability == "chat"
+    seed_capability, seed_stage = route_maker_turn(
+        requested="chat",
+        history=[
+            *history,
+            {"role": "user", "content": "会跳的小球"},
+            {"role": "assistant", "content": detail_choice_reply("会跳的小球")},
+        ],
+        current_message="跳得高高",
+        allowed_capabilities={"chat", "visualize", "immersive_reading"},
+        learning=True,
+    )
+    assert seed_stage == SEED
+    assert seed_capability == "visualize"
+    assert "跳得高高" in detail_choice_reply("会跳的小球")
     talk_capability, talk_stage = route_maker_turn(
         requested="chat",
         history=[],
@@ -148,7 +170,7 @@ def test_chat_seed_turn_is_routed_to_visualize():
         allowed_capabilities={"chat"},
         learning=True,
     )
-    assert stayed_stage == SEED
+    assert stayed_stage == DETAIL
     assert stayed == "chat"
 
 

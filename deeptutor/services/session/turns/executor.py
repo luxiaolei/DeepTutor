@@ -1116,7 +1116,27 @@ class TurnExecutor:
             )
 
             pending_done_event: StreamEvent | None = None
-            async for event in self.turn_engine.execute(context):
+            if maker_stage == "detail":
+                from deeptutor.multi_user.maker_gate import detail_choice_reply
+
+                reply = detail_choice_reply(raw_user_content)
+
+                async def _detail_events():
+                    yield StreamEvent(
+                        type=StreamEventType.CONTENT,
+                        source="zaowu",
+                        content=reply,
+                    )
+                    yield StreamEvent(
+                        type=StreamEventType.DONE,
+                        source="zaowu",
+                        metadata={"status": "completed"},
+                    )
+
+                event_source = _detail_events()
+            else:
+                event_source = self.turn_engine.execute(context)
+            async for event in event_source:
                 if event.type == StreamEventType.SESSION:
                     continue
                 if event.type == StreamEventType.DONE:
