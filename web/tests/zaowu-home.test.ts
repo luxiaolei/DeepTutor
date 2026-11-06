@@ -140,6 +140,9 @@ test("maker chips send a choice and numbered replies become buttons", () => {
   assert.equal(makerPicture("蓝蓝的"), "blue");
   assert.equal(makerPicture("转得快一点"), "motion");
   assert.equal(makerPicture("慢慢转"), "pinwheel");
+  assert.equal(makerPicture("飞舞的小蝴蝶"), "butterfly");
+  assert.equal(makerPicture("摇摆的小树"), "tree");
+  assert.equal(makerPickStarted("我试过了：飞一下。先别改。"), false);
   assert.deepEqual(
     makerChoiceLines("会动的小东西很有趣！\n你想先做哪一个？\n1.会跳的小球\n2．会摆尾巴的小鱼"),
     ["会跳的小球", "会摆尾巴的小鱼"],
@@ -260,6 +263,9 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(list, /if \(learnerChrome\) \{/);
   assert.match(choices, /ellipse cx="20" cy="28"/);
   assert.match(choices, /M23 20c0-12 11-14 15-7/);
+  assert.match(choices, /\/maker\/butterfly\.svg/);
+  assert.match(choices, /\/maker\/tree\.svg/);
+  assert.match(workspace, /MAKER_MAKING_PLACEHOLDER/);
   const shell = readFileSync(
     path.resolve(process.cwd(), "components/sidebar/SidebarShell.tsx"),
     "utf8",

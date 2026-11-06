@@ -34,6 +34,8 @@ const DISC: Record<MakerPicture, string> = {
   idea: "#f6d36b",
   direction: "#86c5a6",
   pinwheel: "#f08b6a",
+  butterfly: "#ffffff",
+  tree: "#ffffff",
   red: "#e85d4c",
   blue: "#4aa3e0",
   high: "#7eb6ff",
@@ -226,9 +228,18 @@ export function MakerPicture({ name, large }: { name: MakerPicture; large?: bool
       className="inline-flex shrink-0 items-center justify-center rounded-full"
       style={{ width: size, height: size, background: DISC[name] }}
     >
+      {name === "butterfly" || name === "tree" ? (
+        <img
+          src={name === "butterfly" ? "/maker/butterfly.svg" : "/maker/tree.svg"}
+          alt=""
+          width={size * 0.78}
+          height={size * 0.78}
+        />
+      ) : (
       <svg width={size * 0.62} height={size * 0.62} viewBox="0 0 48 48" aria-hidden>
         <PictureShape name={name} />
       </svg>
+      )}
     </span>
   );
 }

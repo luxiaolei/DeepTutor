@@ -12,6 +12,7 @@ TALK = "talk"
 DETAIL = "detail"
 SEED = "seed"
 REVISE = "revise"
+TRIED = "tried"
 
 MAKER_STAGE_KEY = "zaowu_maker_stage"
 SEED_MARKER = 'data-zaowu-stage="seed"'
@@ -19,7 +20,7 @@ SEED_MARKER_ALT = "data-zaowu-stage='seed'"
 SEED_HTML_MAX_CHARS = 2400
 SEED_OTHER_MAX_CHARS = 900
 
-_STAGES = {TALK, DETAIL, SEED, REVISE}
+_STAGES = {TALK, DETAIL, SEED, REVISE, TRIED}
 
 
 def decide_maker_stage(
@@ -27,6 +28,8 @@ def decide_maker_stage(
     current_message: str,
 ) -> str:
     """Stage for one learner turn, from prior messages plus the new one."""
+    if _tried_the_toy(current_message):
+        return TRIED
     if _asks_for_another_piece(current_message):
         return TALK
     # 「还想做另一个吗？」 starts a new piece. Earlier picks and the previous
@@ -144,6 +147,22 @@ def stage_from_context(context: Any) -> str | None:
     return stage
 
 
+def tried_choice_reply(text: str) -> str:
+    """After the child taps the toy. A reaction, then one invitation for a new pair."""
+    label = str(text or "")
+    if "飞" in label:
+        reaction = "飞起来了！"
+    elif "跳" in label:
+        reaction = "跳起来了！"
+    elif "转" in label:
+        reaction = "转起来了！"
+    elif "摆" in label:
+        reaction = "摆起来了！"
+    else:
+        reaction = "真好看！"
+    return f"{reaction}\n还想做另一个吗？\n1. 会唱歌的\n2. 会画画的"
+
+
 def detail_choice_reply(pick: str) -> str:
     """Instant next picture pair. No model call, so the child is not left waiting."""
     name = str(pick or "").strip() or "这个"
@@ -158,7 +177,7 @@ def detail_choice_reply(pick: str) -> str:
 
 def _is_real_pick(text: str) -> bool:
     value = str(text or "").strip()
-    if not value or _asks_for_other_choices(value):
+    if not value or _asks_for_other_choices(value) or _tried_the_toy(value):
         return False
     if "我想做" in value:
         return False
@@ -180,6 +199,10 @@ def _real_picks(history: list[dict[str, Any]], current_message: str) -> int:
     if seen_assistant and _is_real_pick(current_message):
         count += 1
     return count
+
+
+def _tried_the_toy(current_message: str) -> bool:
+    return "我试过了" in str(current_message or "")
 
 
 def _asks_for_another_piece(current_message: str) -> bool:
@@ -215,7 +238,9 @@ __all__ = [
     "SEED",
     "SEED_MARKER",
     "DETAIL",
+    "TRIED",
     "TALK",
+    "tried_choice_reply",
     "decide_maker_stage",
     "detail_choice_reply",
     "prior_visualization_commits",

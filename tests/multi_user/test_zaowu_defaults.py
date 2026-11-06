@@ -9,6 +9,7 @@ from deeptutor.multi_user.maker_gate import (
     DETAIL,
     decide_maker_stage,
     detail_choice_reply,
+    tried_choice_reply,
     route_maker_turn,
     seed_payload_error,
 )
@@ -157,6 +158,10 @@ def test_chat_seed_turn_is_routed_to_visualize():
     assert "跳得高高" in reply
     assert "还是" in reply
     assert "你想先做哪一个" not in reply
+    tried = tried_choice_reply("我试过了：飞一下。先别改。")
+    assert tried.startswith("飞起来了！")
+    assert "还想做另一个吗" in tried
+    assert decide_maker_stage([{"role": "assistant", "content": '<div data-zaowu-stage="seed"></div>'}], "我试过了：飞一下。先别改。") == "tried"
     talk_capability, talk_stage = route_maker_turn(
         requested="chat",
         history=[],

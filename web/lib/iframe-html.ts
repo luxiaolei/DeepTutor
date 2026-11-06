@@ -167,6 +167,17 @@ const BRIDGE_SCRIPT =
     document.addEventListener("DOMContentLoaded", startHeightObservers, { once: true });
   }
   window.addEventListener("load", scheduleHeightReport);
+  document.addEventListener("click", function (event) {
+    var node = event.target;
+    var button = node && node.closest ? node.closest("button") : null;
+    if (!button) return;
+    try {
+      parent.postMessage({
+        type: "dt:maker-tried",
+        text: String(button.innerText || button.getAttribute("aria-label") || "").replace(/\\s+/g, "").trim()
+      }, "*");
+    } catch (error) {}
+  }, true);
 })();
 <` + "/script>";
 
@@ -184,6 +195,30 @@ function injectBridge(html: string): string {
  * Convenience: inject KaTeX, sanitize, then add the host bridge. Suitable for a
  * one-shot iframe `srcdoc` write.
  */
+/**
+ * A learner preview: a large control a six-year-old can tap, and a scene
+ * short enough that the sentence above the toy stays on a 640px window.
+ */
+export function learnerPreviewHtml(html: string): string {
+  const style =
+    "<style data-zaowu-control>" +
+    "html,body{height:auto!important;min-height:0!important;}" +
+    "svg,img,canvas{max-height:140px!important;height:auto!important;width:auto!important;max-width:100%!important;}" +
+    "button{min-height:88px!important;min-width:200px!important;font-size:30px!important;" +
+    "padding:12px 28px!important;border-radius:999px!important;margin:12px auto!important;display:block!important;}" +
+    "</style>" +
+    "<script data-zaowu-control>(function(){" +
+    "var button=document.querySelector('button');" +
+    "if(button) document.body.appendChild(button);" +
+    "Array.prototype.forEach.call(document.body.children,function(node){" +
+    "if(node.tagName==='BUTTON'||node.tagName==='STYLE'||node.tagName==='SCRIPT')return;" +
+    "node.style.maxHeight='180px';node.style.overflow='hidden';" +
+    "});" +
+    "})();</script>";
+  if (html.includes("</body>")) return html.replace("</body>", style + "</body>");
+  return html + style;
+}
+
 export function prepareIframeHtml(html: string): string {
   return injectBridge(sanitizeIframeHtml(injectKaTeX(html)));
 }

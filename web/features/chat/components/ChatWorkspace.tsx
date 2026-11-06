@@ -51,11 +51,14 @@ import {
   guidanceDensity,
   learnerCapabilityAllowed,
   MAKER_AFTER_PICK_PLACEHOLDER,
+  MAKER_MAKING_PLACEHOLDER,
   MAKER_OTHER_CHOICES_PROMPT,
   makerOpening,
   makerPickAck,
   makerPickStarted,
   makerSpeaks,
+  makerTriedPrompt,
+  makerTriedReaction,
   spokenMakerPrompt,
 } from "@/lib/zaowu-home";
 import { speakMaker, stopMakerSpeech } from "@/lib/maker-speech";
@@ -1277,31 +1280,59 @@ export default function ChatWorkspace() {
     const container = messagesContainerRef.current;
     if (!container) return;
     const align = () => {
-      const preview = container.querySelector("[data-maker-preview]");
+      const show = container.querySelector("[data-maker-show]");
       const rows = container.querySelectorAll("[data-maker-choice-row]");
-      const target = preview instanceof HTMLElement ? preview : rows[rows.length - 1];
+      const target = show instanceof HTMLElement ? show : rows[rows.length - 1];
       if (!(target instanceof HTMLElement)) return;
-      // Keep the latest control (the picture row, or 「跳一下」 at the bottom
-      // of the preview) above the composer. A short window used to leave
-      // only the adult code buttons on screen.
-      const clear = preview instanceof HTMLElement ? 88 : 72;
-      const overflow =
-        target.getBoundingClientRect().bottom -
-        (container.getBoundingClientRect().bottom - clear);
+      // Keep the sentence and the in-toy button together above the composer.
+      // Pinning only the button used to scroll 「点…试试」 off a 640px window.
+      const clear = show instanceof HTMLElement ? 72 : 72;
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const room = containerRect.height - clear;
+      if (targetRect.height > room) {
+        const top = targetRect.top - containerRect.top;
+        if (Math.abs(top - 8) > 8) container.scrollTop += top - 8;
+        return;
+      }
+      const overflow = targetRect.bottom - (containerRect.bottom - clear);
       if (overflow > 8) container.scrollTop += overflow;
     };
     const frame = requestAnimationFrame(align);
-    const preview = container.querySelector("[data-maker-preview]");
+    const show = container.querySelector("[data-maker-show]");
     const observer =
-      preview instanceof HTMLElement && typeof ResizeObserver !== "undefined"
+      show instanceof HTMLElement && typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => align())
         : null;
-    if (preview instanceof HTMLElement) observer?.observe(preview);
+    if (show instanceof HTMLElement) observer?.observe(show);
     return () => {
       cancelAnimationFrame(frame);
       observer?.disconnect();
     };
   }, [learnerHome, state.isStreaming, state.messages, messagesContainerRef]);
+  useEffect(() => {
+    if (!learnerHome) return;
+    const onTried = (event: MessageEvent) => {
+      const data = event.data as { type?: string; text?: string } | null;
+      if (!data || data.type !== "dt:maker-tried" || state.isStreaming) return;
+      const label = String(data.text || "");
+      void speakMaker(makerTriedReaction(label));
+      const asked = state.messages.some(
+        (message) => message.role === "assistant" && message.content.includes("还想做另一个"),
+      );
+      if (asked) return;
+      void sendMessage(
+        makerTriedPrompt(label),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { displayUserMessage: false, persistUserMessage: false },
+      );
+    };
+    window.addEventListener("message", onTried);
+    return () => window.removeEventListener("message", onTried);
+  }, [learnerHome, sendMessage, state.isStreaming, state.messages]);
   useEffect(() => {
     if (!awaitingUserCard) return;
     shouldAutoScrollRef.current = true;
@@ -3238,7 +3269,9 @@ export default function ChatWorkspace() {
                 inputPlaceholder={composerPlaceholder({
                   learner: learnerHome,
                   hint: learnerHome ? undefined : askHint,
-                  maker: state.messages.some((message) => message.role === "user" && makerPickStarted(message.content))
+                  maker: state.isStreaming && state.messages.some((message) => message.role === "user" && makerPickStarted(message.content))
+                    ? MAKER_MAKING_PLACEHOLDER
+                    : state.messages.some((message) => message.role === "user" && makerPickStarted(message.content))
                     ? MAKER_AFTER_PICK_PLACEHOLDER
                     : t("What shall we make?"),
                   adult: "",

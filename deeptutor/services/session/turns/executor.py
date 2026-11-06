@@ -1116,10 +1116,14 @@ class TurnExecutor:
             )
 
             pending_done_event: StreamEvent | None = None
-            if maker_stage == "detail":
-                from deeptutor.multi_user.maker_gate import detail_choice_reply
+            if maker_stage in {"detail", "tried"}:
+                from deeptutor.multi_user.maker_gate import detail_choice_reply, tried_choice_reply
 
-                reply = detail_choice_reply(raw_user_content)
+                reply = (
+                    tried_choice_reply(raw_user_content)
+                    if maker_stage == "tried"
+                    else detail_choice_reply(raw_user_content)
+                )
 
                 async def _detail_events():
                     yield StreamEvent(

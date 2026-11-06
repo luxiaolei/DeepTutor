@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { Code2, Copy, Check, ExternalLink, Maximize2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Mermaid } from "@/components/Mermaid";
-import { prepareIframeHtml } from "@/lib/iframe-html";
+import { learnerPreviewHtml, prepareIframeHtml } from "@/lib/iframe-html";
 import {
   isManimResult,
   type VisualizeCanvasResult,
@@ -120,7 +120,10 @@ function HtmlRenderer({ html, compact = false }: { html: string; compact?: boole
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(compact ? 160 : 560);
 
-  const prepared = useMemo(() => prepareIframeHtml(html || ""), [html]);
+  const prepared = useMemo(
+    () => prepareIframeHtml(compact ? learnerPreviewHtml(html || "") : html || ""),
+    [html, compact],
+  );
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -146,9 +149,10 @@ function HtmlRenderer({ html, compact = false }: { html: string; compact?: boole
         Number.isFinite(data.height)
       ) {
         const next = Math.ceil(data.height) + 8;
-        // A learner preview is only as tall as the scene. A tall floor left
-        // an empty band under a short page and pushed 「跳一下」 off a 640px window.
-        setHeight(compact ? Math.min(360, Math.max(96, next)) : Math.min(2400, Math.max(240, next)));
+        // Leave room above the scene for 「点…试试，再给旁边的人看。」
+        // A 640px window cannot show that sentence and a 360px toy together.
+        const learnerCap = typeof window === "undefined" ? 280 : Math.min(320, Math.max(200, window.innerHeight - 340));
+        setHeight(compact ? Math.min(learnerCap, Math.max(160, next)) : Math.min(2400, Math.max(240, next)));
       }
     };
     window.addEventListener("message", onMessage);

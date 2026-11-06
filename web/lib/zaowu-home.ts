@@ -139,6 +139,24 @@ export const MAKER_OTHER_CHOICES_PROMPT =
 /** Placeholder once a picture has been chosen. The choice screen keeps the shorter line. */
 export const MAKER_AFTER_PICK_PLACEHOLDER = "先点上面的按钮试试。";
 
+/** Placeholder while the toy is being made and there is nothing to tap yet. */
+export const MAKER_MAKING_PLACEHOLDER = "我们正在做，马上就好。";
+
+/** Sent after the child taps the button inside the toy. Not shown as their bubble. */
+export function makerTriedPrompt(label: string): string {
+  const name = label.replace(/\s+/g, "").slice(0, 16);
+  return name ? `我试过了：${name}。先别改。` : "我试过了。先别改。";
+}
+
+/** The short line spoken the moment the in-toy button is tapped. */
+export function makerTriedReaction(label: string): string {
+  if (label.includes("飞")) return "飞起来了！";
+  if (label.includes("跳")) return "跳起来了！";
+  if (label.includes("转")) return "转起来了！";
+  if (label.includes("摆")) return "摆起来了！";
+  return "真好看！";
+}
+
 /** Said the moment a picture card is tapped, before any making starts. */
 export function makerPickAck(choice: string): string {
   const name = choice.trim() || "这个";
@@ -148,7 +166,7 @@ export function makerPickAck(choice: string): string {
 /** A real pick, not the opening direction and not the hidden 「看别的」 ask. */
 export function makerPickStarted(text: string): boolean {
   const value = text.trim();
-  if (!value || value === MAKER_OTHER_CHOICES_PROMPT) return false;
+  if (!value || value === MAKER_OTHER_CHOICES_PROMPT || value.startsWith("我试过了")) return false;
   if (value.includes("我想做")) return false;
   return true;
 }
@@ -182,7 +200,7 @@ export const MAKER_CHOICE_INVITATION = "你想先做哪一个？";
 export function makerInvitesChoice(text: string): boolean {
   // 「还是」 is the how-it-should-be question (跳得高高，还是轻轻跳跳).
   // The topic question stays 「你想先做哪一个？」.
-  return text.includes("先做哪一个") || text.includes("还是");
+  return text.includes("先做哪一个") || text.includes("还是") || text.includes("还想做另一个");
 }
 
 /**
@@ -288,6 +306,8 @@ export type MakerPicture =
   | "high"
   | "gentle"
   | "pinwheel"
+  | "butterfly"
+  | "tree"
   | "motion"
   | "swap"
   | "glow"
@@ -295,6 +315,8 @@ export type MakerPicture =
 
 const PICTURE_RULES: ReadonlyArray<readonly [RegExp, MakerPicture]> = [
   [/光|亮/, "glow"],
+  [/蝴蝶/, "butterfly"],
+  [/树/, "tree"],
   [/鱼/, "fish"],
   [/球/, "ball"],
   [/星/, "star"],

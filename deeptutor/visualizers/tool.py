@@ -114,7 +114,23 @@ class SubmitVisualizationTool(BaseTool):
                 metadata={"maker_stage": TALK},
             )
         if maker_stage == SEED:
+            topic = "\n".join(
+                [
+                    str(getattr(context, "user_message", "") or ""),
+                    *[
+                        str(message.get("content") or "")
+                        for message in (getattr(context, "conversation_history", None) or [])
+                        if isinstance(message, dict)
+                    ],
+                ]
+            )
             seed_error = seed_payload_error(visualizer_id, raw_payload)
+            if not seed_error and "蝴蝶" in topic and 'data-zaowu-shape="butterfly"' not in raw_payload:
+                seed_error = (
+                    "This is a butterfly, not a bow. Draw two wing pairs, spots, "
+                    'a body, and two antennae, and set data-zaowu-shape="butterfly" '
+                    "on the svg. Keep the large button."
+                )
             if seed_error:
                 return ToolResult(
                     content=seed_error,

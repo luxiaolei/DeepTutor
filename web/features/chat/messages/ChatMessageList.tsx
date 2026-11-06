@@ -1273,7 +1273,9 @@ export const AssistantMessage = memo(function AssistantMessage({
         <MathAnimatorViewer result={mathAnimatorResult} />
       ) : visualizeResult ? (
         <>
+          <div data-maker-show={learnerChrome ? "true" : undefined}>
           {learnerChrome ? (
+            <div data-maker-note="true">
             <MakerPreviewNote
               text={makerPreviewWords(
                 answerText(body),
@@ -1282,9 +1284,11 @@ export const AssistantMessage = memo(function AssistantMessage({
               )}
               speak={makerSpeaks(makerDensity)}
             />
+            </div>
           ) : null}
           <div data-maker-preview={learnerChrome ? "true" : undefined}>
             <VisualizationViewer result={visualizeResult} quiet={learnerChrome} />
+          </div>
           </div>
         </>
       ) : videoLessonResult ? (
