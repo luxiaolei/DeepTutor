@@ -141,6 +141,8 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.equal(makerPicture("会发光的"), "glow");
   assert.equal(makerPicture("会唱歌的"), "music");
   assert.equal(makerPicture("会画画的"), "draw");
+  assert.equal(makerPicture("会转的小风车"), "pinwheel");
+  assert.notEqual(makerPicture("会转的小风车"), makerPicture("会动的"));
   assert.equal(learnerActivityLabel("zaowu"), "造物");
   assert.equal(learnerActivityLabel("read_skill"), null);
   assert.equal(learnerActivityLabel("读取技能"), "读取技能");
@@ -205,6 +207,13 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(composer, /!learnerChrome && \(controls\?\.voice !== false \|\| recorder\.state !== "idle"\) \? \(/);
   assert.match(workspace, /learnerHome \? null : \(/);
   assert.match(choices, /ellipse cx="20" cy="28"/);
+  assert.match(choices, /M23 20c0-12 11-14 15-7/);
+  const shell = readFileSync(
+    path.resolve(process.cwd(), "components/sidebar/SidebarShell.tsx"),
+    "utf8",
+  );
+  assert.match(shell, /sidebarCollapsed && !isMobile && !learnerHome/);
+  assert.match(shell, /learnerHome \? null : \(/);
   assert.match(workspace, /makerDensity=\{learnerHome \? makerDensity : undefined\}/);
   assert.match(workspace, /speakMaker\(/);
   assert.match(workspace, /overflow-x-hidden overflow-y-auto px-6 py-6/);

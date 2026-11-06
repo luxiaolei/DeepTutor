@@ -138,7 +138,7 @@ export function SidebarShell({
   // Inside the mobile drawer the icon-only rail is pointless — the panel is
   // already hidden when you don't want it, so it always opens fully expanded
   // regardless of the persisted desktop preference.
-  const collapsed = sidebarCollapsed && !isMobile;
+  const collapsed = sidebarCollapsed && !isMobile && !learnerHome;
   const resize = useSidebarResize(collapsed || isMobile, initialWidth, widthStorageKey);
 
   // The account links live in the workspace menu, which always shows them in
@@ -169,6 +169,10 @@ export function SidebarShell({
   // sees the current category list; the listener itself is installed once.
   const hotkeys = useRef<(event: KeyboardEvent) => void>(() => {});
   const handleHotkey = (event: KeyboardEvent) => {
+    if (learnerHome && (matchesShortcut(event, SHORTCUTS.search) || matchesShortcut(event, SHORTCUTS.newChat))) {
+      event.preventDefault();
+      return;
+    }
     if (matchesShortcut(event, SHORTCUTS.search)) {
       event.preventDefault();
       setPaletteOpen((open) => !open);
@@ -398,6 +402,8 @@ export function SidebarShell({
       ) : (
         <div className="dt-sidebar-header">
           <WorkspaceMenu accountSlot={renderedFooter} onNavigate={() => drawer?.close()} />
+          {learnerHome ? null : (
+            <>
           <Tooltip label={t("navigation.search")} side="bottom" shortcut={SHORTCUTS.search}>
             <button
               type="button"
@@ -421,6 +427,8 @@ export function SidebarShell({
               <ChevronsLeft size={17} strokeWidth={1.6} />
             </button>
           </Tooltip>
+            </>
+          )}
         </div>
       )}
 

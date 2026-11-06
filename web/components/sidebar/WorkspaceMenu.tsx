@@ -93,6 +93,16 @@ export function WorkspaceMenu({
     setOpen(false)
     onNavigate?.()
   }
+  if (learnerHome) {
+    return (
+      <div className={`dt-workspace-menu ${compact ? 'is-rail' : ''}`}>
+        <div className="flex min-w-0 items-center gap-2 px-2 text-[13.5px] font-semibold text-[var(--foreground)]">
+          <WorkspaceGlyph name={headerLabel} general size={22} />
+          {compact ? null : <span className="min-w-0 flex-1 truncate text-left">{headerLabel}</span>}
+        </div>
+      </div>
+    )
+  }
   return (
     <div ref={rootRef} className={`dt-workspace-menu ${compact ? 'is-rail' : ''}`}>
       {compact ? (

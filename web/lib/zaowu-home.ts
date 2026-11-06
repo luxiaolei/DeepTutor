@@ -196,6 +196,7 @@ export type MakerPicture =
   | "fish"
   | "idea"
   | "direction"
+  | "pinwheel"
   | "motion"
   | "swap"
   | "glow"
@@ -217,6 +218,7 @@ const PICTURE_RULES: ReadonlyArray<readonly [RegExp, MakerPicture]> = [
   [/猫|狗|动物|鸟/, "animal"],
   [/主意|点子|想法/, "idea"],
   [/方向/, "direction"],
+  [/风车/, "pinwheel"],
   [/动|转|摆|跳|风/, "motion"],
 ];
 

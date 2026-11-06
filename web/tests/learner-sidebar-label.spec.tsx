@@ -41,6 +41,7 @@ it("keeps the workspace name for an ordinary account", () => {
 it("shows 造物 as the learner sidebar header", () => {
   fixture.learner = true;
   render(<WorkspaceMenu />);
-  expect(screen.getByRole("button", { name: "造物" })).toBeInTheDocument();
+  expect(screen.getByText("造物")).toBeInTheDocument();
+  expect(screen.queryByRole("button")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /General workspace/ })).not.toBeInTheDocument();
 });
