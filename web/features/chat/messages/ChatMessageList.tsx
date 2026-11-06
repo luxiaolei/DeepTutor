@@ -1790,6 +1790,7 @@ export const UserMessage = memo(function UserMessage({
   availableKbNames,
   kbDisplayNames,
   showModeBadge,
+  learnerChrome = false,
   onOpenConsultation,
 }: {
   msg: ChatMessageItem;
@@ -1810,6 +1811,8 @@ export const UserMessage = memo(function UserMessage({
   /** Label the bubble with its capability. A single-capability surface
    *  already names the mode in its own chrome. */
   showModeBadge?: boolean;
+  /** Hide adult reference chips such as the persona tag. */
+  learnerChrome?: boolean;
   onOpenConsultation?: () => void;
 }) {
   const { t } = useTranslation();
@@ -1984,7 +1987,7 @@ export const UserMessage = memo(function UserMessage({
           } satisfies ContextTreeItem,
         ]
       : []),
-    ...(snap?.persona
+    ...(snap?.persona && !learnerChrome
       ? [
           {
             key: "persona",
@@ -2574,6 +2577,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                 availableKbNames={availableKbNames}
                 kbDisplayNames={kbDisplayNames}
                 showModeBadge={showModeBadge && !learnerChrome}
+                learnerChrome={learnerChrome}
                 onOpenConsultation={consultationEvents.length && onOpenConsultation
                   ? () => onOpenConsultation(consultationEvents)
                   : undefined}
@@ -2705,9 +2709,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                 onSkipMasteryQuestion={onSkipMasteryQuestion}
                 onChallengeMasteryQuestion={onChallengeMasteryQuestion}
                 onMakerChoice={
-                  onMakerChoice && !isStreaming && i === lastRenderedAssistantIndex
-                    ? onMakerChoice
-                    : undefined
+                  onMakerChoice && !isActiveAssistant ? onMakerChoice : undefined
                 }
                 activityName={activityName}
                 makerDensity={makerDensity}
@@ -2771,7 +2773,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                 </div>
               );
             })()}
-            {learnerChrome && !isStreaming && makerChoiceLines(msg.content).length > 0 && !messageRows.slice(rowIndex + 1).some((row) => row.msg.role === "assistant" && makerChoiceLines(row.msg.content).length > 0) ? (
+            {learnerChrome && makerChoiceLines(msg.content).length > 0 && !messageRows.slice(rowIndex + 1).some((row) => row.msg.role === "assistant" && makerChoiceLines(row.msg.content).length > 0) ? (
               <button
                 type="button"
                 onClick={() => onRegenerateMessage()}

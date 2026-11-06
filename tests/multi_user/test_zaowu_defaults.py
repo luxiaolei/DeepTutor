@@ -89,6 +89,16 @@ def test_one_sentence_stays_in_talk_and_a_seed_is_not_a_finished_page():
         )
         == SEED
     )
+    assert (
+        decide_maker_stage(
+            [
+                {"role": "user", "content": "我想做一个会动的小东西。"},
+                {"role": "assistant", "content": "1. 会跳的小球\n2. 会摆尾的小鱼"},
+            ],
+            "再看两个不一样的。我还没选，先不要做出来。",
+        )
+        == TALK
+    )
     history = [
         {"role": "user", "content": "会动的"},
         {"role": "assistant", "content": '<div data-zaowu-stage="seed"></div>'},

@@ -29,6 +29,11 @@ def decide_maker_stage(
     commits = prior_visualization_commits(history or [])
     if commits >= 1:
         return REVISE
+    # 「看别的」 asks for another pair. It is not a choice, so the turn stays
+    # in talk. Treating it as the second sentence used to open visualize and
+    # wait on submit_visualization, which never saved a reply.
+    if _asks_for_other_choices(current_message):
+        return TALK
     if _user_turns(history or [], current_message) >= 2:
         return SEED
     return TALK
@@ -125,6 +130,11 @@ def stage_from_context(context: Any) -> str | None:
     )
     metadata[MAKER_STAGE_KEY] = stage
     return stage
+
+
+def _asks_for_other_choices(current_message: str) -> bool:
+    text = str(current_message or "")
+    return any(phrase in text for phrase in ("再看两个", "再换两个", "看别的"))
 
 
 def _user_turns(history: list[dict[str, Any]], current_message: str) -> int:

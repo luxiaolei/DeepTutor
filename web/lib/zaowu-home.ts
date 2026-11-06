@@ -134,7 +134,7 @@ export function learnerStyleLabel(options: {
  * It is not shown as the child's own bubble and it is not stored as one.
  */
 export const MAKER_OTHER_CHOICES_PROMPT =
-  "再换两个不一样的小点子。先问「你想先做哪一个？」，然后只写两行，一行一个，写成 1. 和 2.。不要和刚才的两个一样。";
+  "再看两个不一样的。我还没选，先不要做出来。";
 
 /** The line a listening child needs before picture choices. */
 export const MAKER_CHOICE_INVITATION = "你想先做哪一个？";
@@ -156,17 +156,34 @@ export function withMakerChoiceInvitation(text: string): string {
   return `${body}${gap}\n\n${MAKER_CHOICE_INVITATION}`;
 }
 
+const CHOICE_LINE = /^\s*(?:[-*]\s+)?\d+\s*[.．。、)）]\s*(.+?)\s*$/;
+
+function choiceLabel(raw: string): string | null {
+  const cleaned = raw.replace(/\*+/g, "").trim();
+  if (!cleaned || cleaned.length > 40) return null;
+  return cleaned;
+}
+
+function choiceSource(text: string): string {
+  return text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<li\b[^>]*>/gi, "\n1. ")
+    .replace(/<\/li>/gi, "\n");
+}
+
 /** Short numbered options the maker shell turns into send buttons. */
 export function makerChoiceLines(text: string): string[] {
   const choices: string[] = [];
-  for (const line of text.split("\n")) {
-    const match = line.match(/^\s*\d+[.、)]\s+(.+?)\s*$/);
+  for (const line of choiceSource(text).split("\n")) {
+    const match = line.match(CHOICE_LINE);
     if (!match) continue;
-    const label = match[1].trim();
-    if (label && label.length <= 40) choices.push(label);
+    const label = choiceLabel(match[1] ?? "");
+    if (label) choices.push(label);
   }
-  if (choices.length < 2 || choices.length > 3) return [];
-  return choices;
+  const picked =
+    choices.length > 3 ? choices.filter((label) => label.length <= 16) : choices;
+  if (picked.length < 2 || picked.length > 3) return [];
+  return picked;
 }
 
 /**
@@ -177,11 +194,20 @@ export function makerChoiceLines(text: string): string[] {
 export function withoutMakerChoiceLines(text: string, choices: string[]): string {
   if (choices.length === 0) return text;
   const drop = new Set(choices);
-  const kept = text.split("\n").filter((line) => {
-    const match = line.match(/^\s*\d+[.、)]\s+(.+?)\s*$/);
-    return !(match && drop.has(match[1].trim()));
+  const withoutItems = text.replace(/<li\b[^>]*>\s*([^<]*?)\s*<\/li>/gi, (whole, inner: string) => {
+    const label = choiceLabel(inner.replace(/^\d+\s*[.．。、)）]\s*/, ""));
+    return label && drop.has(label) ? "" : whole;
   });
-  return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const kept = withoutItems.split("\n").filter((line) => {
+    const match = line.match(CHOICE_LINE);
+    const label = match ? choiceLabel(match[1] ?? "") : null;
+    return !(label && drop.has(label));
+  });
+  return kept
+    .join("\n")
+    .replace(/<(ol|ul)\b[^>]*>\s*<\/\1>/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /**
