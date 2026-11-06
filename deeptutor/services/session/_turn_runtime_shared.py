@@ -1442,6 +1442,9 @@ class _TurnExecution:
     coordination_task: asyncio.Task[None] | None = None
     lease_lost: bool = False
     shutdown_requested: bool = False
+    # A newer learner picture tap asked this talk turn to stop before its
+    # task was created. start_turn must not launch the task after that.
+    preempt_requested: bool = False
 
 
 # Compatibility for saved requests and clients using passage-based tutoring.

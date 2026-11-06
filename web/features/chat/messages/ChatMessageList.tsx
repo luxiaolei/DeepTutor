@@ -2134,7 +2134,7 @@ export const UserMessage = memo(function UserMessage({
         )}
         {/* Recovery records are local to this browser. Keep their actions
             visible so an old pending submission can be resolved in place. */}
-        {!editing && msg.failedSubmission ? (
+        {!editing && msg.failedSubmission && !learnerChrome ? (
           <div
             data-unsent="true"
             className="flex items-center gap-1 pr-1 text-[11px] font-medium text-[var(--destructive)]"
@@ -2768,7 +2768,28 @@ export const ChatMessageList = memo(function ChatMessageList({
               // card with an inline retry instead of leaving a bare trace.
               // A learner keeps the picture cards they already have. The
               // adult 「本轮执行中断了」 card is not a next tap.
-              if (learnerChrome) return null;
+              if (learnerChrome) {
+                // A failed opening has nothing to tap. Adult network copy and a
+                // blank 「想好了」 are not a next step. Cards already on screen
+                // stay the next tap, so this stays quiet once a pair exists.
+                if (earlierChoiceCards || isActiveAssistant || (!terminalError && !emptyResponse)) {
+                  return null;
+                }
+                return (
+                  <div role="status" className="mt-3 flex items-center gap-3 text-sm text-[var(--foreground)]">
+                    <span>{"这次没做成。再点一次。"}</span>
+                    {showResend || showRegenerate ? (
+                      <button
+                        type="button"
+                        onClick={() => (showResend ? onResendLastTurn?.() : onRegenerateMessage())}
+                        className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2"
+                      >
+                        {"再试一次"}
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              }
               if (isActiveAssistant) return null;
               if (stopped) return (
                 <div role="status" className="mt-3 flex items-center gap-2 text-sm text-[var(--muted-foreground)]">

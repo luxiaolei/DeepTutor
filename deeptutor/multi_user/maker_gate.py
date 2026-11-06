@@ -153,7 +153,7 @@ def detail_choice_reply(pick: str) -> str:
         first, second = "转得快一点", "慢慢转"
     else:
         first, second = "红红的", "蓝蓝的"
-    return f"好，我们就做{name}。\n你想先做哪一个？\n1. {first}\n2. {second}"
+    return f"好，我们就做{name}。\n{first}，还是{second}？\n1. {first}\n2. {second}"
 
 
 def _is_real_pick(text: str) -> bool:

@@ -1742,6 +1742,8 @@ interface ChatContextValue {
   /** Take a queued message back, from the running turn too if not yet read. */
   withdrawQueuedMessage: (id: string) => void;
   cancelStreamingTurn: () => void;
+  /** Stop a learner turn and wait until the session can accept the next one. */
+  releaseLearnerTurn: () => Promise<void>;
   /**
    * Deliver the user's reply for a turn that is paused on an
    * ``ask_user`` tool call. Sends the reply via the unified WS so the
@@ -2028,6 +2030,18 @@ function asReadingSelection(
   };
 }
 
+function learnerChromeRemembered(): boolean {
+  if (typeof sessionStorage === "undefined") return false;
+  try {
+    const raw = sessionStorage.getItem("deeptutor.learnerChrome.v1");
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as { learningPolicy?: unknown };
+    return Boolean(parsed?.learningPolicy);
+  } catch {
+    return false;
+  }
+}
+
 export function ChatStateAdapterProvider({
   children,
 }: {
@@ -2053,6 +2067,9 @@ export function ChatStateAdapterProvider({
   // or ``nothing_to_regenerate``). Keyed by session entry key.
   const pendingRegenerateRef = useRef<Map<string, MessageItem>>(new Map());
   const pendingResendRef = useRef<Map<string, MessageItem>>(new Map());
+  // Set for the whole send, including the moment before React has rendered
+  // ``isStreaming``. A picture tap 0.1s after 「看别的」 has to see that turn.
+  const turnBusyRef = useRef(false);
   const pendingSubmissionIdsRef = useRef<
     Map<string, { storageKey: string; sourceStorageKey?: string; submissionId: string; visibleSubmissionIds: string[] }>
   >(new Map());
@@ -2328,6 +2345,7 @@ export function ChatStateAdapterProvider({
           }
         }
         pendingSubmissionIdsRef.current.delete(effectiveKey);
+        turnBusyRef.current = false;
         dispatch({
           type: "STREAM_END",
           key: effectiveKey,
@@ -2416,7 +2434,7 @@ export function ChatStateAdapterProvider({
       // placeholder empty so STREAM_END can flag the optimistic user row.
       if (!submissionRejected) {
         dispatch({ type: "STREAM_EVENT", key: effectiveKey, event });
-      } else {
+      } else if (!learnerChromeRemembered()) {
         notify(event.content, { tone: "error", durationMs: 10_000 });
       }
       if (terminalError) {
@@ -2455,6 +2473,7 @@ export function ChatStateAdapterProvider({
           (event.metadata as { status?: string } | undefined)?.status ||
             "failed",
         );
+        turnBusyRef.current = false;
         dispatch({
           type: "STREAM_END",
           key: effectiveKey,
@@ -2506,6 +2525,7 @@ export function ChatStateAdapterProvider({
               ) {
                 return;
               }
+              turnBusyRef.current = false;
               dispatch({
                 type: "STREAM_END",
                 key: record.key,
@@ -2515,15 +2535,17 @@ export function ChatStateAdapterProvider({
               // Surface the disconnect to the user. The WS client already
               // logs to console — we add a toast so non-debugging users
               // don't see streaming silently flatline.
-              notify(
-                i18n.t(
-                  "Connection lost while generating. Please retry your message.",
-                ),
-                {
-                  tone: "error",
-                  durationMs: 6000,
-                },
-              );
+              if (!learnerChromeRemembered()) {
+                notify(
+                  i18n.t(
+                    "Connection lost while generating. Please retry your message.",
+                  ),
+                  {
+                    tone: "error",
+                    durationMs: 6000,
+                  },
+                );
+              }
             }
           },
         ),
@@ -2558,6 +2580,7 @@ export function ChatStateAdapterProvider({
       if (!runner.client.connected) {
         if (attempt >= SUBMIT_CONNECT_RETRY_LIMIT) {
           console.error("WebSocket failed to connect after retries");
+          turnBusyRef.current = false;
           dispatch({
             type: "STREAM_END",
             key,
@@ -2573,15 +2596,17 @@ export function ChatStateAdapterProvider({
           // Surfaces the dead-after-N-retries case (different code path
           // from the close-while-streaming handler above). Same user
           // mental model, so same toast copy.
-          notify(
-            i18n.t(
-              "Couldn't reach the server. Please check your connection and retry.",
-            ),
-            {
-              tone: "error",
-              durationMs: 6000,
-            },
-          );
+          if (!learnerChromeRemembered()) {
+            notify(
+              i18n.t(
+                "Couldn't reach the server. Please check your connection and retry.",
+              ),
+              {
+                tone: "error",
+                durationMs: 6000,
+              },
+            );
+          }
           return Promise.resolve(false);
         }
         return new Promise<boolean>((resolve) => {
@@ -3439,6 +3464,7 @@ export function ChatStateAdapterProvider({
         } as typeof command;
       }
       requestSnapshot.submissionRequest = { ...command };
+      turnBusyRef.current = true;
       if (!replacesSubmissionId) showSubmission();
       // Persist before attempting the socket, including a first turn that
       // has no server session yet. Replays reuse their original identity.
@@ -3496,32 +3522,57 @@ export function ChatStateAdapterProvider({
     [makeDraftKey, sendThroughRunner, ensureRunner],
   );
 
-  const cancelStreamingTurn = useCallback(async () => {
+  const stopStreamingTurn = useCallback(async (options?: { waitUntilIdle?: boolean }) => {
     const generation = runtimeGeneration.current;
-    const currentState = stateRef.current;
-    const key = currentState.selectedKey;
+    const waitUntilIdle = Boolean(options?.waitUntilIdle);
+    const key = stateRef.current.selectedKey;
     if (!key) return;
-    const session = currentState.sessions[key];
-    if (!session) return;
-    const turnId = session.activeTurnId;
+    const live = () => stateRef.current.sessions[key];
+    if (!live()) return;
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    if (waitUntilIdle) {
+      // 「看别的」 may have been sent but not yet named. Cancelling before
+      // the turn id exists only drops the socket, and the swap still finishes.
+      const namedBy = Date.now() + 5000;
+      while (Date.now() < namedBy) {
+        const session = live();
+        if (session?.activeTurnId) break;
+        if (!session?.isStreaming && !turnBusyRef.current) return;
+        await sleep(40);
+      }
+    }
+    const turnId = live()?.activeTurnId;
     const runner = runnersRef.current.get(key);
-    if (runner) {
-      if (turnId) {
-        try {
-          if (!await runner.client.sendAwaitingAck({ type: "cancel_turn", turn_id: turnId })) {
-            notify(i18n.t("Couldn't reach the server. Please check your connection and retry."), { tone: "error" });
-            return;
-          }
-          if (generation !== runtimeGeneration.current) return;
-        } catch {
+    if (runner && turnId) {
+      try {
+        const accepted = await runner.client.sendAwaitingAck({ type: "cancel_turn", turn_id: turnId });
+        if (!accepted && !learnerChromeRemembered()) {
           notify(i18n.t("Couldn't reach the server. Please check your connection and retry."), { tone: "error" });
           return;
         }
+        if (generation !== runtimeGeneration.current) return;
+      } catch {
+        if (!learnerChromeRemembered()) {
+          notify(i18n.t("Couldn't reach the server. Please check your connection and retry."), { tone: "error" });
+        }
+        return;
       }
+    }
+    if (waitUntilIdle && turnId) {
+      const idleBy = Date.now() + 8000;
+      while (Date.now() < idleBy) {
+        const session = live();
+        if (!session?.isStreaming && session?.activeTurnId !== turnId) break;
+        await sleep(40);
+      }
+    }
+    const session = live();
+    const stillRunning = Boolean(session?.isStreaming);
+    if (runner && (!waitUntilIdle || stillRunning)) {
       runner.client.disconnect();
       runnersRef.current.delete(key);
     }
-    if (session.isStreaming) {
+    if (stillRunning && session) {
       // Stop is not proof that the server accepted the user row. In
       // particular, before a turn ID exists another tab may have stored a
       // newer attempt with this same logical submission ID. Keep the record
@@ -3534,7 +3585,15 @@ export function ChatStateAdapterProvider({
         submissionFailed: Boolean(pendingSubmission && !turnId),
       });
     }
+    turnBusyRef.current = false;
   }, []);
+  const cancelStreamingTurn = useCallback(() => {
+    void stopStreamingTurn();
+  }, [stopStreamingTurn]);
+  const releaseLearnerTurn = useCallback(
+    () => stopStreamingTurn({ waitUntilIdle: true }),
+    [stopStreamingTurn],
+  );
 
   const submitUserReply = useCallback(
     async (
@@ -4292,6 +4351,7 @@ export function ChatStateAdapterProvider({
       queueMessage,
       withdrawQueuedMessage,
       cancelStreamingTurn,
+      releaseLearnerTurn,
       submitUserReply,
       regenerateLastMessage,
       resendLastMessage,
@@ -4329,6 +4389,7 @@ export function ChatStateAdapterProvider({
       queueMessage,
       withdrawQueuedMessage,
       cancelStreamingTurn,
+      releaseLearnerTurn,
       submitUserReply,
       regenerateLastMessage,
       resendLastMessage,

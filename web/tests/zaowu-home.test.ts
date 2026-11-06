@@ -130,6 +130,9 @@ test("maker chips send a choice and numbered replies become buttons", () => {
   assert.equal(makerPickStarted("我想做一个会动的小东西。"), false);
   assert.equal(makerPickStarted(MAKER_OTHER_CHOICES_PROMPT), false);
   assert.match(makerPreviewWords("", "<button>跳一下</button>", "会跳的小球"), /点「跳一下」试试，再给旁边的人看/);
+  const sourceDump = "<style>button{color:red}</style><p>现在交给你一块会转的风车。</p><button>转起来</button><script>b.onclick=function(){}</script>";
+  assert.equal(makerPreviewWords(sourceDump, sourceDump, "风车"), "点「转起来」试试，再给旁边的人看。");
+  assert.equal(makerInvitesChoice("转得快一点，还是慢慢转？"), true);
   assert.equal(makerPickAck("会跳的小球"), "好，我们就做会跳的小球。");
   assert.equal(makerPicture("跳得高高"), "high");
   assert.equal(makerPicture("轻轻跳跳"), "gentle");
@@ -253,7 +256,8 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(list, /showModeBadge && !learnerChrome/);
   assert.match(list, /onMakerChoice && !isActiveAssistant/);
   assert.match(list, /snap\?\.persona && !learnerChrome/);
-  assert.match(list, /if \(learnerChrome\) return null/);
+  assert.match(list, /这次没做成。再点一次。/);
+  assert.match(list, /if \(learnerChrome\) \{/);
   assert.match(choices, /ellipse cx="20" cy="28"/);
   assert.match(choices, /M23 20c0-12 11-14 15-7/);
   const shell = readFileSync(

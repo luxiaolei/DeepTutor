@@ -153,15 +153,26 @@ export function makerPickStarted(text: string): boolean {
   return true;
 }
 
-/** Words beside a first preview. Names the control when the model said nothing. */
+/** Words beside a first preview. The child hears the next tap, never the source. */
 export function makerPreviewWords(content: string, html: string, title: string): string {
-  const spoken = content.replace(/\s+/g, " ").trim();
   const button = html.match(/<button\b[^>]*>([^<]{1,16})<\/button>/i)?.[1]?.replace(/\s+/g, "").trim();
-  const name = title.replace(/^HTML\s*[·.]\s*/i, "").trim();
-  if (button && spoken.includes(button)) return spoken;
   const cue = button ? `点「${button}」试试，再给旁边的人看。` : "看一看，再给旁边的人看。";
-  if (!spoken) return name ? `好，${name}。${cue}` : cue;
-  return `${spoken}${/[。！？]$/.test(spoken) ? "" : "。"}${cue}`;
+  const prose = content
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const looksLikeSource =
+    !prose ||
+    prose.length > 80 ||
+    /[{};]|function |const |<!|@keyframes|animation:/.test(prose);
+  if (looksLikeSource) return cue;
+  if (button && prose.includes(button) && prose.includes("试试")) {
+    return prose.includes("旁边的人") ? prose : `${prose.replace(/。$/, "")}，再给旁边的人看。`;
+  }
+  void title;
+  return cue;
 }
 
 /** The line a listening child needs before picture choices. */
@@ -169,7 +180,9 @@ export const MAKER_CHOICE_INVITATION = "你想先做哪一个？";
 
 /** The reply already asks which picture to tap next. */
 export function makerInvitesChoice(text: string): boolean {
-  return text.includes("先做哪一个");
+  // 「还是」 is the how-it-should-be question (跳得高高，还是轻轻跳跳).
+  // The topic question stays 「你想先做哪一个？」.
+  return text.includes("先做哪一个") || text.includes("还是");
 }
 
 /**

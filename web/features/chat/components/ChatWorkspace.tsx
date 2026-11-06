@@ -347,6 +347,7 @@ export default function ChatWorkspace() {
     queueMessage,
     withdrawQueuedMessage,
     cancelStreamingTurn,
+    releaseLearnerTurn,
     submitUserReply,
     regenerateLastMessage,
     resendLastMessage,
@@ -2244,10 +2245,12 @@ export default function ChatWorkspace() {
         undefined,
         memoryPayload,
       ];
-      if (state.isStreaming && learnerHome) {
+      if (learnerHome) {
         // A picture tap during 「看别的」 is the choice. Stop that turn and
-        // send it now. Queuing it would show an adult chip and then another pair.
-        await cancelStreamingTurn();
+        // wait until the session is free before sending. When nothing is
+        // running this returns immediately. Sending both at once is rejected,
+        // and the swap still finishes as another pair.
+        await releaseLearnerTurn();
         sendMessage(...send);
         setRetryingTurn(null);
       } else if (state.isStreaming) {
@@ -2319,7 +2322,7 @@ export default function ChatWorkspace() {
       selectedQuestionEntries.length,
       sendMessage,
       queueMessage,
-      cancelStreamingTurn,
+      releaseLearnerTurn,
       learnerHome,
       retrying,
       shouldAutoScrollRef,
@@ -3041,6 +3044,21 @@ export default function ChatWorkspace() {
                  rendered as an assistant reply — with the message's text kept
                  above, marked unsent, and retryable. */}
               {state.submissionFailed ? (
+                learnerHome ? (
+                <div
+                  role="status"
+                  className="mx-auto flex w-full max-w-[960px] items-center gap-3 px-6 pb-1 text-sm text-[var(--foreground)]"
+                >
+                  <span>{"这次没做成。再点一次。"}</span>
+                  <button
+                    type="button"
+                    onClick={handleResendMessage}
+                    className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2"
+                  >
+                    {"再试一次"}
+                  </button>
+                </div>
+                ) : (
                 <div
                   role="alert"
                   data-submission-error="true"
@@ -3069,6 +3087,7 @@ export default function ChatWorkspace() {
                     ) : null}
                   </div>
                 </div>
+                )
               ) : null}
               <ChatComposer
                 learnerChrome={learnerHome}

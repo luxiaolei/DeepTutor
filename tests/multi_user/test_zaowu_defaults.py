@@ -153,7 +153,10 @@ def test_chat_seed_turn_is_routed_to_visualize():
     )
     assert seed_stage == SEED
     assert seed_capability == "visualize"
-    assert "跳得高高" in detail_choice_reply("会跳的小球")
+    reply = detail_choice_reply("会跳的小球")
+    assert "跳得高高" in reply
+    assert "还是" in reply
+    assert "你想先做哪一个" not in reply
     talk_capability, talk_stage = route_maker_turn(
         requested="chat",
         history=[],
