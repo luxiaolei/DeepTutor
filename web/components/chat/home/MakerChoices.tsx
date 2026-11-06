@@ -277,6 +277,17 @@ export function MakerSpeakerButton({ text }: { text: string }) {
   );
 }
 
+/** The sentence beside a first picture, read aloud for the youngest band. */
+export function MakerPreviewNote({ text, speak }: { text: string; speak: boolean }) {
+  useSpokenMakerPrompt(speak, text);
+  return (
+    <div className="mb-3 flex w-full flex-col items-center gap-3">
+      <p className="max-w-[640px] text-center text-[15px] leading-7 text-[var(--foreground)]">{text}</p>
+      {speak ? <MakerSpeakerButton text={text} /> : null}
+    </div>
+  );
+}
+
 /** Speak once when a youngest-band prompt appears. A tap on the speaker says it again. */
 export function useSpokenMakerPrompt(enabled: boolean, text: string) {
   useEffect(() => {
@@ -291,11 +302,14 @@ export function MakerChoiceRow({
   heading,
   choices,
   onPick,
+  locked = false,
 }: {
   density: ZaowuDensity;
   heading: string;
   choices: readonly string[];
   onPick: (choice: string) => void;
+  /** The child already picked. Pictures stay, but they do not start another make. */
+  locked?: boolean;
 }) {
   const spoken = spokenMakerPrompt(heading, choices);
   const speak = makerSpeaks(density);
@@ -316,6 +330,7 @@ export function MakerChoiceRow({
             key={choice}
             label={choice}
             density={density}
+            disabled={locked}
             onClick={() => onPick(choice)}
           />
         ))}

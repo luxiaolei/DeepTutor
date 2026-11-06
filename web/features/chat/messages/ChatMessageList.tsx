@@ -12,13 +12,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { MakerChoiceRow, MakerPicture } from "@/components/chat/home/MakerChoices";
+import { MakerChoiceRow, MakerPicture, MakerPreviewNote } from "@/components/chat/home/MakerChoices";
 import {
   learnerStyleLabel,
   MAKER_CHOICE_INVITATION,
   makerChoiceLines,
   makerInvitesChoice,
+  makerPickStarted,
+  makerPreviewWords,
   makerShowsPictures,
+  makerSpeaks,
   withMakerChoiceInvitation,
   withoutInProgressChoiceLines,
   withoutMakerChoiceLines,
@@ -759,6 +762,7 @@ export const AssistantMessage = memo(function AssistantMessage({
   activityName,
   makerDensity = "older",
   learnerChrome = false,
+  choicesLocked = false,
   researchRequestSnapshot,
   onTraceToggle,
   masteryGrades,
@@ -839,6 +843,8 @@ export const AssistantMessage = memo(function AssistantMessage({
   makerDensity?: ZaowuDensity;
   /** Learner chrome: no raw skill ids, no token meter. */
   learnerChrome?: boolean;
+  /** Pictures of earlier choices stay, but do not start another make. */
+  choicesLocked?: boolean;
 }) {
   const { t } = useTranslation();
   const events = useMemo(() => msg.events ?? [], [msg.events]);
@@ -1266,7 +1272,21 @@ export const AssistantMessage = memo(function AssistantMessage({
       ) : mathAnimatorResult ? (
         <MathAnimatorViewer result={mathAnimatorResult} />
       ) : visualizeResult ? (
-        <VisualizationViewer result={visualizeResult} />
+        <>
+          {learnerChrome ? (
+            <MakerPreviewNote
+              text={makerPreviewWords(
+                answerText(body),
+                String((visualizeResult as { code?: { content?: string } }).code?.content ?? ""),
+                String((visualizeResult as { presentation?: { title?: string } }).presentation?.title ?? ""),
+              )}
+              speak={makerSpeaks(makerDensity)}
+            />
+          ) : null}
+          <div data-maker-preview={learnerChrome ? "true" : undefined}>
+            <VisualizationViewer result={visualizeResult} quiet={learnerChrome} />
+          </div>
+        </>
       ) : videoLessonResult ? (
         <>
           <VideoLessonViewer result={videoLessonResult} />
@@ -1394,6 +1414,7 @@ export const AssistantMessage = memo(function AssistantMessage({
           density={makerDensity}
           heading={choiceProse}
           choices={makerChoices}
+          locked={choicesLocked || !onMakerChoice}
           onPick={(choice) => onMakerChoice?.(choice)}
         />
       ) : null}
@@ -2516,6 +2537,9 @@ export const ChatMessageList = memo(function ChatMessageList({
     return new Map(messageRows.map((row, index) => [row.originalIndex, totals[index]]));
   }, [messageRows]);
 
+  const pickIndex = messages.findIndex(
+    (message) => message.role === "user" && makerPickStarted(message.content),
+  );
   const lastRenderedAssistantIndex = useMemo(() => {
     for (let idx = messageRows.length - 1; idx >= 0; idx -= 1) {
       if (messageRows[idx].msg.role === "assistant")
@@ -2719,6 +2743,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                 activityName={activityName}
                 makerDensity={makerDensity}
                 learnerChrome={learnerChrome}
+                choicesLocked={pickIndex >= 0 && i < pickIndex}
                 researchRequestSnapshot={
                   pairedUserMessage?.requestSnapshot ?? null
                 }
@@ -2778,7 +2803,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                 </div>
               );
             })()}
-            {learnerChrome && !isStreaming && makerChoiceLines(msg.content).length > 0 && !messageRows.slice(rowIndex + 1).some((row) => row.msg.role === "assistant" && makerChoiceLines(row.msg.content).length > 0) ? (
+            {learnerChrome && pickIndex < 0 && !isStreaming && makerChoiceLines(msg.content).length > 0 && !messageRows.slice(rowIndex + 1).some((row) => row.msg.role === "assistant" && makerChoiceLines(row.msg.content).length > 0) ? (
               <button
                 type="button"
                 onClick={() => onRegenerateMessage()}

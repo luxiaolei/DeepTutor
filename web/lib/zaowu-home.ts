@@ -136,6 +136,28 @@ export function learnerStyleLabel(options: {
 export const MAKER_OTHER_CHOICES_PROMPT =
   "再看两个不一样的。我还没选，先不要做出来。";
 
+/** Placeholder once a picture has been chosen. The choice screen keeps the shorter line. */
+export const MAKER_AFTER_PICK_PLACEHOLDER = "看一看，想改哪里？";
+
+/** A real pick, not the opening direction and not the hidden 「看别的」 ask. */
+export function makerPickStarted(text: string): boolean {
+  const value = text.trim();
+  if (!value || value === MAKER_OTHER_CHOICES_PROMPT) return false;
+  if (value.includes("我想做")) return false;
+  return true;
+}
+
+/** Words beside a first preview. Names the control when the model said nothing. */
+export function makerPreviewWords(content: string, html: string, title: string): string {
+  const spoken = content.replace(/\s+/g, " ").trim();
+  const button = html.match(/<button\b[^>]*>([^<]{1,16})<\/button>/i)?.[1]?.replace(/\s+/g, "").trim();
+  const name = title.replace(/^HTML\s*[·.]\s*/i, "").trim();
+  if (button && spoken.includes(button)) return spoken;
+  const cue = button ? `点「${button}」试试。` : "看一看。";
+  if (!spoken) return name ? `好，${name}。${cue}` : cue;
+  return `${spoken}${/[。！？]$/.test(spoken) ? "" : "。"}${cue}`;
+}
+
 /** The line a listening child needs before picture choices. */
 export const MAKER_CHOICE_INVITATION = "你想先做哪一个？";
 

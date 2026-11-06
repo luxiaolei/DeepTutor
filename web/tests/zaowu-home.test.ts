@@ -14,6 +14,8 @@ import {
   MAKER_OTHER_CHOICES_PROMPT,
   makerChoiceLines,
   makerInvitesChoice,
+  makerPickStarted,
+  makerPreviewWords,
   makerOpening,
   makerPicture,
   makerShowsPictures,
@@ -123,6 +125,10 @@ test("maker chips send a choice and numbered replies become buttons", () => {
   assert.equal(withMakerChoiceInvitation("  "), MAKER_CHOICE_INVITATION);
   assert.match(spokenMakerPrompt(withMakerChoiceInvitation("会动的小东西很有趣！"), ["会跳的小球", "会转的小风车"]), /你想先做哪一个/);
   assert.match(MAKER_OTHER_CHOICES_PROMPT, /再看两个不一样的/);
+  assert.equal(makerPickStarted("会跳的小球"), true);
+  assert.equal(makerPickStarted("我想做一个会动的小东西。"), false);
+  assert.equal(makerPickStarted(MAKER_OTHER_CHOICES_PROMPT), false);
+  assert.match(makerPreviewWords("", "<button>跳一下</button>", "会跳的小球"), /点「跳一下」试试/);
   assert.deepEqual(
     makerChoiceLines("会动的小东西很有趣！\n你想先做哪一个？\n1.会跳的小球\n2．会摆尾巴的小鱼"),
     ["会跳的小球", "会摆尾巴的小鱼"],
@@ -201,7 +207,7 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(list, /withMakerChoiceInvitation/);
   assert.match(list, /heading=\{choiceProse\}/);
   assert.match(list, /看别的/);
-  assert.match(list, /learnerChrome && !isStreaming && makerChoiceLines/);
+  assert.match(list, /pickIndex < 0 && !isStreaming && makerChoiceLines/);
   assert.match(list, /withoutInProgressChoiceLines/);
   assert.equal(
     withoutInProgressChoiceLines("会动的小东西真有趣！\n你想先做哪一个？\n1. 会跳的小球\n2. 会转的小风车"),

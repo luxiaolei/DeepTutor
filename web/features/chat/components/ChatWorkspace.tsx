@@ -50,8 +50,10 @@ import {
   composerPlaceholder,
   guidanceDensity,
   learnerCapabilityAllowed,
+  MAKER_AFTER_PICK_PLACEHOLDER,
   MAKER_OTHER_CHOICES_PROMPT,
   makerOpening,
+  makerPickStarted,
   makerSpeaks,
   spokenMakerPrompt,
 } from "@/lib/zaowu-home";
@@ -1273,8 +1275,9 @@ export default function ChatWorkspace() {
     const container = messagesContainerRef.current;
     if (!container) return;
     const frame = requestAnimationFrame(() => {
+      const preview = container.querySelector("[data-maker-preview]");
       const rows = container.querySelectorAll("[data-maker-choice-row]");
-      const last = rows[rows.length - 1];
+      const last = preview ?? rows[rows.length - 1];
       if (!(last instanceof HTMLElement)) return;
       const clear = 72;
       const overflow =
@@ -2227,7 +2230,13 @@ export default function ChatWorkspace() {
         undefined,
         memoryPayload,
       ];
-      if (state.isStreaming) {
+      if (state.isStreaming && learnerHome) {
+        // A picture tap during 「看别的」 is the choice. Stop that turn and
+        // send it now. Queuing it would show an adult chip and then another pair.
+        await cancelStreamingTurn();
+        sendMessage(...send);
+        setRetryingTurn(null);
+      } else if (state.isStreaming) {
         // Sent while a turn runs: it waits its turn. Plain words can steer
         // the running turn at its next step; anything carrying attachments,
         // references or another mode is a turn of its own.
@@ -2296,6 +2305,8 @@ export default function ChatWorkspace() {
       selectedQuestionEntries.length,
       sendMessage,
       queueMessage,
+      cancelStreamingTurn,
+      learnerHome,
       retrying,
       shouldAutoScrollRef,
       state.isStreaming,
@@ -2997,12 +3008,14 @@ export default function ChatWorkspace() {
                       onDismiss={dismissSelectedPassage}
                     />
                   ) : null}
+                  {learnerHome ? null : (
                   <TurnNavigator
                     entries={chatOutline}
                     scrollRootRef={messagesContainerRef}
                     onJump={jumpToTurn}
                     onJumpToBottom={resumeFollowingLatest}
                   />
+                  )}
                 </div>
               )}
 
@@ -3150,7 +3163,7 @@ export default function ChatWorkspace() {
                 onCancelStreaming={cancelStreamingTurn}
                 prefillInputRef={prefillInputRef}
                 focusInputRef={focusComposerRef}
-                queueWhileStreaming
+                queueWhileStreaming={!learnerHome}
                 inputHeader={
                   retrying ? (
                     <div className="flex items-center gap-2 px-4 pt-3 text-[12.5px]">
@@ -3178,16 +3191,20 @@ export default function ChatWorkspace() {
                   ) : undefined
                 }
                 inputFooter={
+                  learnerHome ? null : (
                   <QueuedMessages
                     messages={state.queuedMessages}
                     isStreaming={state.isStreaming}
                     onWithdraw={withdrawQueuedMessage}
                   />
+                  )
                 }
                 inputPlaceholder={composerPlaceholder({
                   learner: learnerHome,
                   hint: learnerHome ? undefined : askHint,
-                  maker: t("What shall we make?"),
+                  maker: state.messages.some((message) => message.role === "user" && makerPickStarted(message.content))
+                    ? MAKER_AFTER_PICK_PLACEHOLDER
+                    : t("What shall we make?"),
                   adult: "",
                 }) || undefined}
                 inputPlaceholderCompletion={learnerHome ? undefined : askHint}

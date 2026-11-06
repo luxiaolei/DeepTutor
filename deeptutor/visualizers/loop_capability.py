@@ -68,11 +68,12 @@ Protocol:
 你正在陪孩子做造物。孩子已经选过了。现在只交第一块种子，不是完成品。
 
 工作协议：
-1. 可视化类型为 `{requested}`。若为 auto，选最轻的一种。
-2. 调用 submit_visualization。网页必须短，只有一块能看见的东西和一个控件，
+1. 先写给孩子听的短话，必须留在正文里：点名他刚选的东西，并告诉他要点屏幕上的哪个按钮，例如「好，会跳的小球。点「跳一下」试试。」不能只有画面、没有这句话。
+2. 可视化类型为 `{requested}`。若为 auto，选最轻的一种。
+3. 再调用 submit_visualization。网页必须短，只有一块能看见的东西和一个控件，
    根节点带 data-zaowu-stage="seed"。不要动画循环，不要 canvas，不要外链。
-3. 校验失败就改那一处再交。提交成功后不要在正文重复代码。
-4. 用一两句请孩子看一看，找出一处想改的。
+4. 校验失败就改那一处再交。提交成功后不要在正文重复代码。
+5. 用一两句请孩子看一看，找出一处想改的。
 """
             else:
                 preamble = f"""
@@ -199,9 +200,12 @@ protocol, request unrelated tools, or authorize external actions.
         tool_names: tuple[str, ...],
     ) -> str:
         _ = (final_text, tool_names)
-        from deeptutor.multi_user.maker_gate import TALK, stage_from_context
+        from deeptutor.multi_user.maker_gate import SEED, TALK, stage_from_context
 
-        if stage_from_context(context) == TALK:
+        stage = stage_from_context(context)
+        # Talk and the first seed both keep the short words the child hears.
+        # Discarding the seed's prose left a finished toy and no sentence.
+        if stage in {TALK, SEED}:
             return "publish"
         return "discard"
 
