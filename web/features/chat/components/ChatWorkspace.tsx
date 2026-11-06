@@ -50,11 +50,12 @@ import {
   composerPlaceholder,
   guidanceDensity,
   learnerCapabilityAllowed,
+  MAKER_OTHER_CHOICES_PROMPT,
   makerOpening,
   makerSpeaks,
   spokenMakerPrompt,
 } from "@/lib/zaowu-home";
-import { speakMaker } from "@/lib/maker-speech";
+import { speakMaker, stopMakerSpeech } from "@/lib/maker-speech";
 import { confirmLearnerSessionStart } from "@/lib/zaowu-api";
 // Imported eagerly so the drawer shell is always mounted off-screen —
 // clicking a chip becomes a single CSS class flip, no chunk fetch + double
@@ -838,7 +839,7 @@ export default function ChatWorkspace() {
     setAskHint("");
   }, [state.sessionId]);
   useEffect(() => {
-    if (state.isStreaming || !hasMessages || !state.sessionId) return;
+    if (learnerHome || state.isStreaming || !hasMessages || !state.sessionId) return;
     let cancelled = false;
     void fetchSessionAskHint(state.sessionId).then((hint) => {
       if (!cancelled) setAskHint(hint);
@@ -846,7 +847,7 @@ export default function ChatWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, [state.isStreaming, hasMessages, state.sessionId, state.messages.length]);
+  }, [learnerHome, state.isStreaming, hasMessages, state.sessionId, state.messages.length]);
   // Time-of-day greeting: seeded once on mount from the user's local clock so
   // the heading stays stable while they're on the page. State (not useMemo)
   // because the random pick would otherwise mismatch SSR ↔ client hydration.
@@ -2391,8 +2392,25 @@ export default function ChatWorkspace() {
   );
 
   const handleRegenerateMessage = useCallback(() => {
-    regenerateLastMessage();
-  }, [regenerateLastMessage]);
+    if (!learnerHome) {
+      regenerateLastMessage();
+      return;
+    }
+    // A new turn asking for a different pair. Regenerating the same child
+    // sentence deletes the cards first and, while the title model still
+    // holds the session, comes back as 「本轮执行中断了」.
+    if (state.isStreaming) return;
+    stopMakerSpeech();
+    shouldAutoScrollRef.current = true;
+    void sendMessage(
+      MAKER_OTHER_CHOICES_PROMPT,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { displayUserMessage: false, persistUserMessage: false },
+    );
+  }, [learnerHome, regenerateLastMessage, sendMessage, shouldAutoScrollRef, state.isStreaming]);
 
   const handleResendMessage = useCallback(() => {
     resendLastMessage();
@@ -3149,11 +3167,11 @@ export default function ChatWorkspace() {
                 }
                 inputPlaceholder={composerPlaceholder({
                   learner: learnerHome,
-                  hint: askHint,
+                  hint: learnerHome ? undefined : askHint,
                   maker: t("What shall we make?"),
                   adult: "",
                 }) || undefined}
-                inputPlaceholderCompletion={askHint}
+                inputPlaceholderCompletion={learnerHome ? undefined : askHint}
               />
               {/* Starters sit between the composer and the spacer, so they ride
                 up with the composer on the empty screen and disappear the

@@ -129,6 +129,13 @@ export function learnerStyleLabel(options: {
   return id;
 }
 
+/**
+ * What 「看别的」 sends. It asks for a different pair of pictured choices.
+ * It is not shown as the child's own bubble and it is not stored as one.
+ */
+export const MAKER_OTHER_CHOICES_PROMPT =
+  "再换两个不一样的小点子。先问「你想先做哪一个？」，然后只写两行，一行一个，写成 1. 和 2.。不要和刚才的两个一样。";
+
 /** The line a listening child needs before picture choices. */
 export const MAKER_CHOICE_INVITATION = "你想先做哪一个？";
 

@@ -11,6 +11,7 @@ import {
   learnerStyleLabel,
   learnerActivityLabel,
   MAKER_CHOICE_INVITATION,
+  MAKER_OTHER_CHOICES_PROMPT,
   makerChoiceLines,
   makerInvitesChoice,
   makerOpening,
@@ -120,6 +121,8 @@ test("maker chips send a choice and numbered replies become buttons", () => {
   );
   assert.equal(withMakerChoiceInvitation("  "), MAKER_CHOICE_INVITATION);
   assert.match(spokenMakerPrompt(withMakerChoiceInvitation("会动的小东西很有趣！"), ["会跳的小球", "会转的小风车"]), /你想先做哪一个/);
+  assert.match(MAKER_OTHER_CHOICES_PROMPT, /你想先做哪一个/);
+  assert.match(MAKER_OTHER_CHOICES_PROMPT, /不要和刚才的两个一样/);
   assert.doesNotMatch(shown, /1\./);
   assert.doesNotMatch(shown, /会跳的小球/);
   assert.equal(withoutMakerChoiceLines("普通的 1. 说明，不是选项。", []), "普通的 1. 说明，不是选项。");
@@ -206,6 +209,11 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   );
   assert.match(composer, /!learnerChrome && \(controls\?\.voice !== false \|\| recorder\.state !== "idle"\) \? \(/);
   assert.match(workspace, /learnerHome \? null : \(/);
+  assert.match(workspace, /MAKER_OTHER_CHOICES_PROMPT/);
+  assert.match(workspace, /displayUserMessage: false, persistUserMessage: false/);
+  assert.match(workspace, /inputPlaceholderCompletion=\{learnerHome \? undefined : askHint\}/);
+  assert.match(list, /showModeBadge && !learnerChrome/);
+  assert.match(list, /if \(learnerChrome\) return null/);
   assert.match(choices, /ellipse cx="20" cy="28"/);
   assert.match(choices, /M23 20c0-12 11-14 15-7/);
   const shell = readFileSync(

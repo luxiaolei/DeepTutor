@@ -2573,12 +2573,12 @@ export const ChatMessageList = memo(function ChatMessageList({
                 onSwitchBranch={onSwitchBranch}
                 availableKbNames={availableKbNames}
                 kbDisplayNames={kbDisplayNames}
-                showModeBadge={showModeBadge}
+                showModeBadge={showModeBadge && !learnerChrome}
                 onOpenConsultation={consultationEvents.length && onOpenConsultation
                   ? () => onOpenConsultation(consultationEvents)
                   : undefined}
               />
-              {orphanedFailure ? (
+              {!learnerChrome && orphanedFailure ? (
                 <div
                   role="alert"
                   data-orphaned-failed-turn={orphanedFailure.turn_id}
@@ -2666,6 +2666,20 @@ export const ChatMessageList = memo(function ChatMessageList({
         const showDelete = deletableTurnUserId != null;
 
         const costSummary = msgDone ? messageUsage(msg.events) : null;
+        const earlierChoiceCards = messageRows.slice(0, rowIndex).some(
+          (row) => row.msg.role === "assistant" && makerChoiceLines(row.msg.content).length > 0,
+        );
+        // A failed 「看别的」 must not leave an empty reply under the cards
+        // the child can still tap.
+        if (
+          learnerChrome &&
+          earlierChoiceCards &&
+          msgDone &&
+          !hasVisibleMarkdownContent(msg.content) &&
+          (terminalError || emptyResponse)
+        ) {
+          return null;
+        }
 
         return (
           <div
@@ -2717,6 +2731,9 @@ export const ChatMessageList = memo(function ChatMessageList({
               // A turn that died (LLM/provider failure, interruption) ends
               // with a turn_terminal error event. Surface it as an error
               // card with an inline retry instead of leaving a bare trace.
+              // A learner keeps the picture cards they already have. The
+              // adult 「本轮执行中断了」 card is not a next tap.
+              if (learnerChrome) return null;
               if (isActiveAssistant) return null;
               if (stopped) return (
                 <div role="status" className="mt-3 flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
@@ -2754,7 +2771,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                 </div>
               );
             })()}
-            {learnerChrome && showRegenerate && makerChoiceLines(msg.content).length > 0 ? (
+            {learnerChrome && !isStreaming && makerChoiceLines(msg.content).length > 0 && !messageRows.slice(rowIndex + 1).some((row) => row.msg.role === "assistant" && makerChoiceLines(row.msg.content).length > 0) ? (
               <button
                 type="button"
                 onClick={() => onRegenerateMessage()}

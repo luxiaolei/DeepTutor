@@ -1350,6 +1350,14 @@ class TurnExecutor:
             await self._publish_live_event(execution, pending_done_event)
             stream_done_sent = True
             await self._flush_buffered_events(execution)
+            # The answer is already on screen. Drop the session lease before
+            # the title model runs, so a follow-up such as 「看别的」 is not
+            # rejected as "session already has an active turn" and painted as
+            # an interrupt. Title generation only writes the session title.
+            if execution.lease is not None and self.coordinator is not None:
+                with contextlib.suppress(Exception):
+                    await self.coordinator.release_turn(execution.lease)
+                execution.lease = None
             if not is_regenerate and turn_status == "completed":
                 # Title generation is post-turn metadata. Keep it after DONE
                 # so the composer and duration clock stop as soon as the

@@ -2422,7 +2422,10 @@ export function ChatStateAdapterProvider({
       if (terminalError) {
         // Pre-flight regenerate rejections never mutate server state, so we
         // roll back the optimistic POP_LAST_ASSISTANT/STREAM_START placeholder
-        // to keep the transcript in sync with the server.
+        // to keep the transcript in sync with the server. A restored reply
+        // is still the one on screen; settling this attempt as failed would
+        // stamp 「本轮执行中断了」 onto those cards.
+        let restoredReply = false;
         if (
           reason === "regenerate_busy" ||
           reason === "regenerate_rejected" ||
@@ -2433,6 +2436,7 @@ export function ChatStateAdapterProvider({
             pendingRegenerateRef.current.get(effectiveKey) ??
             pendingResendRef.current.get(effectiveKey);
           if (stash) {
+            restoredReply = true;
             dispatch({
               type: "RESTORE_ASSISTANT",
               key: effectiveKey,
@@ -2454,7 +2458,7 @@ export function ChatStateAdapterProvider({
         dispatch({
           type: "STREAM_END",
           key: effectiveKey,
-          status: status as SessionRuntimeStatus,
+          status: (restoredReply ? "completed" : status) as SessionRuntimeStatus,
           turnId: event.turn_id || null,
           submissionFailed: submissionRejected,
         });
@@ -2487,6 +2491,11 @@ export function ChatStateAdapterProvider({
           },
           () => {
             if (generation !== runtimeGeneration.current) return;
+            // The previous turn hangs this socket up a few seconds after it
+            // finishes. A newer runner may already be asking for another
+            // pair of choices. That close is not a failure of the new turn.
+            const current = runnersRef.current.get(record.key);
+            if (current && current !== record) return;
             const session = stateRef.current.sessions[record.key];
             if (session?.isStreaming) {
               if (
