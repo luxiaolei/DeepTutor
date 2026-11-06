@@ -12,7 +12,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { makerChoiceLines } from "@/lib/zaowu-home";
+import {
+  learnerStyleLabel,
+  makerChoiceLines,
+  withoutMakerChoiceLines,
+} from "@/lib/zaowu-home";
 import {
   BookMarked,
   BookOpen,
@@ -742,6 +746,7 @@ export const AssistantMessage = memo(function AssistantMessage({
   onSkipMasteryQuestion,
   onChallengeMasteryQuestion,
   onMakerChoice,
+  activityName,
   researchRequestSnapshot,
   onTraceToggle,
   masteryGrades,
@@ -815,6 +820,9 @@ export const AssistantMessage = memo(function AssistantMessage({
   onChallengeMasteryQuestion?: (questionId: string) => void | boolean | Promise<void | boolean>;
   /** Send one bounded maker choice as the next turn. */
   onMakerChoice?: (choice: string) => void;
+  /** Name in the activity row. A learner session passes 造物 so the row
+   *  does not fall back to DeepTutor. */
+  activityName?: string;
 }) {
   const { t } = useTranslation();
   const events = useMemo(() => msg.events ?? [], [msg.events]);
@@ -989,6 +997,12 @@ export const AssistantMessage = memo(function AssistantMessage({
   );
 
   const body = msg.content;
+  const makerChoices =
+    onMakerChoice && !isStreaming && !visualizeResult && !askUserPayload
+      ? makerChoiceLines(body)
+      : [];
+  const answerText = (text: string) =>
+    makerChoices.length > 0 ? withoutMakerChoiceLines(text, makerChoices) : text;
 
   // Interleaved segments for the default chat surface: the message is laid
   // out in the order it was written — what DeepTutor said it was about to do,
@@ -1146,6 +1160,7 @@ export const AssistantMessage = memo(function AssistantMessage({
           still working, collapsed once it settles into the final answer. */}
       <AssistantActivity
         events={events}
+        agentName={activityName}
         answerer={answerer}
         traceEvents={headerTraceEvents}
         isStreaming={isStreaming}
@@ -1294,10 +1309,10 @@ export const AssistantMessage = memo(function AssistantMessage({
             ) : block.segment.kind === "user_input" ? (
               <SentMidTurn key={block.key} messages={block.segment.messages} />
             ) : null
-          ) : block.segment.kind === "text" ? (
+          ) : block.segment.kind === "text" && answerText(block.segment.text).trim() ? (
             <AssistantResponse
               key={block.key}
-              content={block.segment.text}
+              content={answerText(block.segment.text)}
               language={language}
               isStreaming={isStreaming}
               readingMaterialId={readingMaterialId}
@@ -1306,16 +1321,16 @@ export const AssistantMessage = memo(function AssistantMessage({
             />
           ) : null,
         )
-      ) : (
+      ) : answerText(body).trim() ? (
         <AssistantResponse
-          content={body}
+          content={answerText(body)}
           language={language}
           isStreaming={isStreaming}
           readingMaterialId={readingMaterialId}
           readingMaterialRevision={readingMaterialRevision}
           events={events}
         />
-      )}
+      ) : null}
       {events.some(event => event.type === "sources" &&
         Array.isArray(event.metadata.sources) && event.metadata.sources.some(source =>
           source && typeof source === "object" &&
@@ -1334,12 +1349,12 @@ export const AssistantMessage = memo(function AssistantMessage({
       askUserPayload ? (
         <AskUserOptions data={askUserPayload} onSubmit={submitReply} />
       ) : null}
-      {onMakerChoice && !isStreaming && !visualizeResult && !askUserPayload
-        ? makerChoiceLines(msg.content).map((choice) => (
+      {makerChoices.length > 0
+        ? makerChoices.map((choice) => (
             <button
               key={choice}
               type="button"
-              onClick={() => onMakerChoice(choice)}
+              onClick={() => onMakerChoice?.(choice)}
               className="mr-2 mt-3 min-h-12 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 text-base text-[var(--foreground)]"
             >
               {choice}
@@ -1944,7 +1959,11 @@ export const UserMessage = memo(function UserMessage({
             key: "persona",
             icon: UserRound,
             kind: t("Persona"),
-            label: snap.persona,
+            label: learnerStyleLabel({
+              selected: snap.persona,
+              defaultLabel: snap.persona,
+              zaowuLabel: t("Zaowu"),
+            }),
           } satisfies ContextTreeItem,
         ]
       : []),
@@ -2177,6 +2196,7 @@ export const ChatMessageList = memo(function ChatMessageList({
   onSkipMasteryQuestion,
   onChallengeMasteryQuestion,
   onMakerChoice,
+  activityName,
   showModeBadge = true,
   onLoadMessageTrace,
   onReleaseMessageTrace,
@@ -2247,6 +2267,8 @@ export const ChatMessageList = memo(function ChatMessageList({
   onChallengeMasteryQuestion?: (questionId: string) => void | boolean | Promise<void | boolean>;
   /** Learner maker choices in the latest reply send the next turn. */
   onMakerChoice?: (choice: string) => void;
+  /** Shown in the in-progress activity row instead of DeepTutor. */
+  activityName?: string;
   /** Names of KBs confirmed to exist. Omitted when the KB list is unavailable. */
   availableKbNames?: Set<string>;
   /** Qualified KB ref -> display name, from the same catalog the composer
@@ -2636,6 +2658,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                     ? onMakerChoice
                     : undefined
                 }
+                activityName={activityName}
                 researchRequestSnapshot={
                   pairedUserMessage?.requestSnapshot ?? null
                 }

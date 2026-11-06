@@ -2875,6 +2875,7 @@ export default function ChatWorkspace() {
                               }
                             : undefined
                         }
+                        activityName={learnerHome ? t("Zaowu") : undefined}
                         onPreviewAttachment={handlePreviewMessageAttachment}
                         onOpenConsultation={(events) => {
                           const meta = events[0]?.metadata ?? {};

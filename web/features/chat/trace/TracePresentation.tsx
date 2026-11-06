@@ -1576,7 +1576,8 @@ export function StreamingStatus({
   else if (mode === "quizzing") modeLabel = t("{{name}} Quizzing…", { name });
   else if (mode === "reflecting")
     modeLabel = t("{{name}} Reflecting…", { name });
-  else if (mode === "responded") modeLabel = t("DeepTutor responded.");
+  else if (mode === "responded")
+    modeLabel = agentName?.trim() ? t("Done") : t("DeepTutor responded.");
 
   const label =
     getExploreContextStatusLabel(events, t, Boolean(isStreaming)) ??

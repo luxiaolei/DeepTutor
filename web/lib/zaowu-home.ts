@@ -138,6 +138,21 @@ export function makerChoiceLines(text: string): string[] {
   return choices;
 }
 
+/**
+ * The maker shell turns those short numbered lines into buttons. Once the
+ * buttons are on screen, the same lines should not also sit in the answer
+ * as a numbered list.
+ */
+export function withoutMakerChoiceLines(text: string, choices: string[]): string {
+  if (choices.length === 0) return text;
+  const drop = new Set(choices);
+  const kept = text.split("\n").filter((line) => {
+    const match = line.match(/^\s*\d+[.、)]\s+(.+?)\s*$/);
+    return !(match && drop.has(match[1].trim()));
+  });
+  return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 /** Empty-composer line. A continuation hint still wins once a chat has one. */
 export function composerPlaceholder(options: {
   learner: boolean;
