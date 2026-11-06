@@ -158,12 +158,16 @@ export function makerComposerLine(options: {
     latestAssistant.content.includes("还想做另一个") &&
     makerChoiceLines(latestAssistant.content).length >= 2,
   );
-  const picked = options.messages.some(
+  const picks = options.messages.filter(
     (message) => message.role === "user" && makerPickStarted(message.content),
-  );
+  ).length;
+  const last = options.messages[options.messages.length - 1];
+  // Only the turn that follows a style or color pick is making the toy.
+  // The acknowledgement that offers that choice is still a choosing turn.
+  const makingToy = options.streaming && picks >= 2 && last?.role === "user" && makerPickStarted(last.content);
   if (choosingAgain && !options.streaming) return options.choosing;
-  if (options.streaming && picked) return MAKER_MAKING_PLACEHOLDER;
-  if (picked) return MAKER_AFTER_PICK_PLACEHOLDER;
+  if (makingToy) return MAKER_MAKING_PLACEHOLDER;
+  if (picks > 0 && !options.streaming) return MAKER_AFTER_PICK_PLACEHOLDER;
   return options.choosing;
 }
 

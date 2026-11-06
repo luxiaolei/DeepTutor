@@ -149,10 +149,9 @@ function HtmlRenderer({ html, compact = false }: { html: string; compact?: boole
         Number.isFinite(data.height)
       ) {
         const next = Math.ceil(data.height) + 8;
-        // Leave room above the scene for 「点…试试，再给旁边的人看。」
-        // A 640px window cannot show that sentence and a 360px toy together.
-        const learnerCap = typeof window === "undefined" ? 280 : Math.min(320, Math.max(200, window.innerHeight - 340));
-        setHeight(compact ? Math.min(learnerCap, Math.max(160, next)) : Math.min(2400, Math.max(240, next)));
+        // The frame follows the artwork, the caption, and the action button.
+        // A 320px cap left 「转一下」 below the frame edge.
+        setHeight(compact ? Math.min(1200, Math.max(160, next)) : Math.min(2400, Math.max(240, next)));
       }
     };
     window.addEventListener("message", onMessage);
@@ -195,7 +194,8 @@ function HtmlRenderer({ html, compact = false }: { html: string; compact?: boole
         title={t("HTML visualization")}
         sandbox="allow-scripts"
         className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)]"
-        style={{ height }}
+        scrolling={compact ? "no" : undefined}
+        style={{ height, overflow: compact ? "hidden" : undefined }}
       />
     </div>
   );

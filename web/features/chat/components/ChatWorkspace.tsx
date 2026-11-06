@@ -1285,15 +1285,20 @@ export default function ChatWorkspace() {
       const containerRect = container.getBoundingClientRect();
       const targetRect = target.getBoundingClientRect();
       if (show instanceof HTMLElement) {
-        // The live end of the transcript hides the sentence above a short
-        // window. Bring that sentence back without pushing the button
-        // under the composer.
+        // Keep the sentence and the whole preview — the frame already
+        // includes the button — in the scrollport together. Parking the
+        // sentence just above the composer pushed the toy underneath it.
         shouldAutoScrollRef.current = false;
-        const pad = 8;
-        const limit = containerRect.bottom - 12;
-        let delta = targetRect.top - (containerRect.top + pad);
-        const bottomAfter = targetRect.bottom - delta;
-        if (bottomAfter > limit) delta += bottomAfter - limit;
+        const topLimit = containerRect.top + 8;
+        const bottomLimit = containerRect.bottom - 8;
+        const room = bottomLimit - topLimit;
+        let delta = 0;
+        if (targetRect.height <= room) {
+          if (targetRect.bottom > bottomLimit) delta = targetRect.bottom - bottomLimit;
+          else if (targetRect.top < topLimit) delta = targetRect.top - topLimit;
+        } else {
+          delta = targetRect.top - topLimit;
+        }
         if (Math.abs(delta) > 4) container.scrollTop += delta;
         requestAnimationFrame(() => {
           shouldAutoScrollRef.current = false;

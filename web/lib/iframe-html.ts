@@ -202,7 +202,7 @@ function injectBridge(html: string): string {
 export function learnerPreviewHtml(html: string): string {
   const style =
     "<style data-zaowu-control>" +
-    "html,body{height:auto!important;min-height:0!important;}" +
+    "html,body{height:auto!important;min-height:0!important;overflow:hidden!important;}" +
     "button{box-sizing:border-box!important;position:static!important;inset:auto!important;" +
     "left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;" +
     "float:none!important;transform:none!important;" +

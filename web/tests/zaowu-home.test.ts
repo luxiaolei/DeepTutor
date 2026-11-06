@@ -267,6 +267,11 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(choices, /\/maker\/butterfly\.svg/);
   assert.match(choices, /\/maker\/tree\.svg/);
   assert.equal(makerComposerLine({
+    messages: [{ role: "user", content: "会转圈的小风车" }],
+    streaming: true,
+    choosing: "想做什么？点一个。",
+  }), "想做什么？点一个。");
+  assert.equal(makerComposerLine({
     messages: [
       { role: "user", content: "会转圈的小风车" },
       { role: "user", content: "转得快一点" },
