@@ -50,12 +50,10 @@ import {
   composerPlaceholder,
   guidanceDensity,
   learnerCapabilityAllowed,
-  MAKER_AFTER_PICK_PLACEHOLDER,
-  MAKER_MAKING_PLACEHOLDER,
   MAKER_OTHER_CHOICES_PROMPT,
+  makerComposerLine,
   makerOpening,
   makerPickAck,
-  makerPickStarted,
   makerSpeaks,
   makerTriedPrompt,
   makerTriedReaction,
@@ -1284,17 +1282,25 @@ export default function ChatWorkspace() {
       const rows = container.querySelectorAll("[data-maker-choice-row]");
       const target = show instanceof HTMLElement ? show : rows[rows.length - 1];
       if (!(target instanceof HTMLElement)) return;
-      // Keep the sentence and the in-toy button together above the composer.
-      // Pinning only the button used to scroll 「点…试试」 off a 640px window.
-      const clear = show instanceof HTMLElement ? 72 : 72;
       const containerRect = container.getBoundingClientRect();
       const targetRect = target.getBoundingClientRect();
-      const room = containerRect.height - clear;
-      if (targetRect.height > room) {
-        const top = targetRect.top - containerRect.top;
-        if (Math.abs(top - 8) > 8) container.scrollTop += top - 8;
+      if (show instanceof HTMLElement) {
+        // The live end of the transcript hides the sentence above a short
+        // window. Bring that sentence back without pushing the button
+        // under the composer.
+        shouldAutoScrollRef.current = false;
+        const pad = 8;
+        const limit = containerRect.bottom - 12;
+        let delta = targetRect.top - (containerRect.top + pad);
+        const bottomAfter = targetRect.bottom - delta;
+        if (bottomAfter > limit) delta += bottomAfter - limit;
+        if (Math.abs(delta) > 4) container.scrollTop += delta;
+        requestAnimationFrame(() => {
+          shouldAutoScrollRef.current = false;
+        });
         return;
       }
+      const clear = 72;
       const overflow = targetRect.bottom - (containerRect.bottom - clear);
       if (overflow > 8) container.scrollTop += overflow;
     };
@@ -1309,7 +1315,7 @@ export default function ChatWorkspace() {
       cancelAnimationFrame(frame);
       observer?.disconnect();
     };
-  }, [learnerHome, state.isStreaming, state.messages, messagesContainerRef]);
+  }, [learnerHome, state.isStreaming, state.messages, messagesContainerRef, shouldAutoScrollRef]);
   useEffect(() => {
     if (!learnerHome) return;
     const onTried = (event: MessageEvent) => {
@@ -3269,11 +3275,11 @@ export default function ChatWorkspace() {
                 inputPlaceholder={composerPlaceholder({
                   learner: learnerHome,
                   hint: learnerHome ? undefined : askHint,
-                  maker: state.isStreaming && state.messages.some((message) => message.role === "user" && makerPickStarted(message.content))
-                    ? MAKER_MAKING_PLACEHOLDER
-                    : state.messages.some((message) => message.role === "user" && makerPickStarted(message.content))
-                    ? MAKER_AFTER_PICK_PLACEHOLDER
-                    : t("What shall we make?"),
+                  maker: makerComposerLine({
+                    messages: state.messages,
+                    streaming: state.isStreaming,
+                    choosing: t("What shall we make?"),
+                  }),
                   adult: "",
                 }) || undefined}
                 inputPlaceholderCompletion={learnerHome ? undefined : askHint}

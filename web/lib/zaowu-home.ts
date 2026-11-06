@@ -142,6 +142,31 @@ export const MAKER_AFTER_PICK_PLACEHOLDER = "先点上面的按钮试试。";
 /** Placeholder while the toy is being made and there is nothing to tap yet. */
 export const MAKER_MAKING_PLACEHOLDER = "我们正在做，马上就好。";
 
+/**
+ * Composer line for a learner. Choosing a topic again (after 「还想做另一个吗？」)
+ * uses the choice-screen line. Generating a toy says we are making it.
+ * A ready preview asks them to tap the button above.
+ */
+export function makerComposerLine(options: {
+  messages: ReadonlyArray<{ role: string; content: string }>;
+  streaming: boolean;
+  choosing: string;
+}): string {
+  const latestAssistant = [...options.messages].reverse().find((message) => message.role === "assistant");
+  const choosingAgain = Boolean(
+    latestAssistant &&
+    latestAssistant.content.includes("还想做另一个") &&
+    makerChoiceLines(latestAssistant.content).length >= 2,
+  );
+  const picked = options.messages.some(
+    (message) => message.role === "user" && makerPickStarted(message.content),
+  );
+  if (choosingAgain && !options.streaming) return options.choosing;
+  if (options.streaming && picked) return MAKER_MAKING_PLACEHOLDER;
+  if (picked) return MAKER_AFTER_PICK_PLACEHOLDER;
+  return options.choosing;
+}
+
 /** Sent after the child taps the button inside the toy. Not shown as their bubble. */
 export function makerTriedPrompt(label: string): string {
   const name = label.replace(/\s+/g, "").slice(0, 16);

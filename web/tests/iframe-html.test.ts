@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { prepareIframeHtml } from "../lib/iframe-html";
+import { learnerPreviewHtml, prepareIframeHtml } from "../lib/iframe-html";
 
 function bridgeSource(): string {
   const prepared = prepareIframeHtml(
@@ -20,6 +20,15 @@ test("iframe bridge measures current body content instead of historical viewport
     source,
     /Math\.max\(document\.documentElement\.scrollHeight/,
   );
+});
+
+test("a learner preview button stays a centered finger target", () => {
+  const html = learnerPreviewHtml("<body><div><button style=\"width:100%\">转一下</button></div></body>");
+  assert.match(html, /width:200px!important/);
+  assert.match(html, /height:88px!important/);
+  assert.match(html, /max-width:200px!important/);
+  assert.match(html, /data-zaowu-action/);
+  assert.doesNotMatch(html, /maxHeight='180px'/);
 });
 
 test("iframe bridge observes layout and tab-content changes with coalescing", () => {

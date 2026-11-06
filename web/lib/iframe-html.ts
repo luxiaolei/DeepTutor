@@ -203,17 +203,26 @@ export function learnerPreviewHtml(html: string): string {
   const style =
     "<style data-zaowu-control>" +
     "html,body{height:auto!important;min-height:0!important;}" +
-    "svg,img,canvas{max-height:140px!important;height:auto!important;width:auto!important;max-width:100%!important;}" +
-    "button{min-height:88px!important;min-width:200px!important;font-size:30px!important;" +
-    "padding:12px 28px!important;border-radius:999px!important;margin:12px auto!important;display:block!important;}" +
+    "button{box-sizing:border-box!important;position:static!important;inset:auto!important;" +
+    "left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;" +
+    "float:none!important;transform:none!important;" +
+    "width:200px!important;min-width:200px!important;max-width:200px!important;" +
+    "height:88px!important;min-height:88px!important;max-height:88px!important;" +
+    "font-size:28px!important;padding:0 16px!important;border-radius:999px!important;" +
+    "margin:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;}" +
+    "[data-zaowu-action]{display:flex!important;justify-content:center!important;width:100%!important;" +
+    "margin:12px 0 0!important;position:relative!important;clear:both!important;background:transparent!important;}" +
     "</style>" +
     "<script data-zaowu-control>(function(){" +
+    "function place(button){" +
+    "if(!button||button.closest('[data-zaowu-action]'))return;" +
+    "var bar=document.createElement('div');" +
+    "bar.setAttribute('data-zaowu-action','true');" +
+    "document.body.appendChild(bar);" +
+    "bar.appendChild(button);" +
+    "}" +
     "var button=document.querySelector('button');" +
-    "if(button) document.body.appendChild(button);" +
-    "Array.prototype.forEach.call(document.body.children,function(node){" +
-    "if(node.tagName==='BUTTON'||node.tagName==='STYLE'||node.tagName==='SCRIPT')return;" +
-    "node.style.maxHeight='180px';node.style.overflow='hidden';" +
-    "});" +
+    "if(button) place(button);" +
     "})();</script>";
   if (html.includes("</body>")) return html.replace("</body>", style + "</body>");
   return html + style;

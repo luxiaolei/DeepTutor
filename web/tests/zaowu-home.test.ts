@@ -12,6 +12,7 @@ import {
   learnerActivityLabel,
   MAKER_CHOICE_INVITATION,
   MAKER_OTHER_CHOICES_PROMPT,
+  makerComposerLine,
   makerChoiceLines,
   makerInvitesChoice,
   makerPickAck,
@@ -225,7 +226,7 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(list, /makerChoices\.length > 0 && !choicesLocked/);
   assert.match(list, /lastPickIndex >= 0 && i < lastPickIndex/);
   assert.match(workspace, /speakMaker\(makerPickAck\(choice\)\)/);
-  assert.match(workspace, /MAKER_AFTER_PICK_PLACEHOLDER/);
+  assert.match(workspace, /makerComposerLine\(/);
   assert.match(workspace, /learnerHome \? null : \(\s*<TurnNavigator/s);
   assert.match(list, /withoutInProgressChoiceLines/);
   assert.equal(
@@ -265,7 +266,30 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(choices, /M23 20c0-12 11-14 15-7/);
   assert.match(choices, /\/maker\/butterfly\.svg/);
   assert.match(choices, /\/maker\/tree\.svg/);
-  assert.match(workspace, /MAKER_MAKING_PLACEHOLDER/);
+  assert.equal(makerComposerLine({
+    messages: [
+      { role: "user", content: "会转圈的小风车" },
+      { role: "user", content: "转得快一点" },
+    ],
+    streaming: true,
+    choosing: "想做什么？点一个。",
+  }), "我们正在做，马上就好。");
+  assert.equal(makerComposerLine({
+    messages: [
+      { role: "user", content: "转得快一点" },
+      { role: "assistant", content: "点「转一下」试试，再给旁边的人看。" },
+    ],
+    streaming: false,
+    choosing: "想做什么？点一个。",
+  }), "先点上面的按钮试试。");
+  assert.equal(makerComposerLine({
+    messages: [
+      { role: "user", content: "转得快一点" },
+      { role: "assistant", content: "转起来了！\n还想做另一个吗？\n1. 会唱歌的\n2. 会画画的" },
+    ],
+    streaming: false,
+    choosing: "想做什么？点一个。",
+  }), "想做什么？点一个。");
   const shell = readFileSync(
     path.resolve(process.cwd(), "components/sidebar/SidebarShell.tsx"),
     "utf8",
