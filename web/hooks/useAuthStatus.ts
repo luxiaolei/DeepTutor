@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { fetchAuthStatus } from "@/lib/auth";
+import {
+  parseRememberedLearner,
+  serializeRememberedLearner,
+  type RememberedLearnerChrome,
+} from "@/lib/learner-chrome";
 
 export interface LearningPolicyState {
   /** Surfaces this account may open. Everything else is hidden, not a 403. */
@@ -34,6 +39,8 @@ export interface AuthStatusState {
   sessionStart: { required: boolean; confirmed: boolean } | null;
   learnerAge: number | null;
 }
+
+const LEARNER_CHROME_KEY = "deeptutor.learnerChrome.v1";
 
 const INITIAL: AuthStatusState = {
   enabled: false,
@@ -75,6 +82,52 @@ function learningPolicyFromStatus(
  * constant, so it works identically on Docker (read-only rootfs), the PyPI
  * `deeptutor start` launcher, and source dev.
  */
+function rememberedLearnerState(): AuthStatusState | null {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const remembered = parseRememberedLearner(sessionStorage.getItem(LEARNER_CHROME_KEY));
+    if (!remembered) return null;
+    return {
+      ...INITIAL,
+      loading: false,
+      statusAvailable: true,
+      authenticated: true,
+      learningPolicy: remembered.learningPolicy,
+      sessionStart: remembered.sessionStart,
+      learnerAge: remembered.learnerAge,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function storeRememberedLearner(state: AuthStatusState) {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    if (!state.learningPolicy) {
+      sessionStorage.removeItem(LEARNER_CHROME_KEY);
+      return;
+    }
+    const payload: RememberedLearnerChrome = {
+      learningPolicy: state.learningPolicy,
+      learnerAge: state.learnerAge,
+      sessionStart: state.sessionStart,
+    };
+    sessionStorage.setItem(LEARNER_CHROME_KEY, serializeRememberedLearner(payload));
+  } catch {
+    /* Private mode can reject storage. The in-memory copy still covers a remount. */
+  }
+}
+
+/** Last resolved status. A new `/chat/<id>` page mounts before its own fetch returns. */
+let resolvedAuth: AuthStatusState | null = null;
+
+export function initialAuthState(): AuthStatusState {
+  // Session storage is applied after mount. Reading it here would make the
+  // hydrated tree disagree with the server render.
+  return resolvedAuth ?? INITIAL;
+}
+
 function loadAuthStatus(): Promise<AuthStatusState> {
   return fetchAuthStatus().then((status) => ({
     enabled: Boolean(status?.enabled),
@@ -99,11 +152,19 @@ function loadAuthStatus(): Promise<AuthStatusState> {
 }
 
 export function useAuthStatus(): AuthStatusState {
-  const [state, setState] = useState<AuthStatusState>(INITIAL);
+  const [state, setState] = useState<AuthStatusState>(initialAuthState);
+
+  useLayoutEffect(() => {
+    if (resolvedAuth) return;
+    const remembered = rememberedLearnerState();
+    if (remembered) setState(remembered);
+  }, []);
 
   useEffect(() => {
     let alive = true;
     loadAuthStatus().then((next) => {
+      resolvedAuth = next;
+      storeRememberedLearner(next);
       if (alive) setState(next);
     });
     return () => {

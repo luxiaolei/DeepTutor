@@ -2783,7 +2783,7 @@ export default function ChatWorkspace() {
                 <div
                   className={
                     learnerHome
-                      ? "flex w-full min-h-0 flex-1 flex-col overflow-y-auto px-6 py-8 animate-fade-in"
+                      ? "min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto px-6 py-6 animate-fade-in"
                       : "flex w-full flex-1 min-h-0 items-end justify-center overflow-hidden pb-14 animate-fade-in px-6"
                   }
                 >
@@ -3166,7 +3166,7 @@ export default function ChatWorkspace() {
                 aria-hidden="true"
                 className="shrink-0"
                 style={{
-                  flexGrow: hasMessages ? 0 : 1.4,
+                  flexGrow: hasMessages || learnerHome ? 0 : 1.4,
                   transition: "flex-grow 650ms cubic-bezier(0.16, 1, 0.3, 1)",
                 }}
               />

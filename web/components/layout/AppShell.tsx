@@ -15,6 +15,7 @@ import { Menu } from "lucide-react";
 import { PageChromeProvider } from "./PageChrome";
 import { useTranslation } from "react-i18next";
 import { useAuthStatus } from "@/hooks/useAuthStatus";
+import { LEARNER_TAB_TITLE, writeDocumentTitle } from "@/lib/learner-chrome";
 import { useDevice } from "@/hooks/useDevice";
 import type { ReactNode } from "react";
 
@@ -74,12 +75,26 @@ export default function AppShell({ sidebar, pageBar, children, homeHref = "/" }:
 
   useEffect(() => {
     if (!learner) return;
-    const previous = document.title;
-    document.title = t("Zaowu");
-    return () => {
-      document.title = previous;
+    let applying = false;
+    const apply = () => {
+      if (applying) return;
+      if (document.title === LEARNER_TAB_TITLE) {
+        const current = document.head.querySelector("title");
+        if (current?.textContent === LEARNER_TAB_TITLE) return;
+      }
+      applying = true;
+      writeDocumentTitle(LEARNER_TAB_TITLE, document);
+      applying = false;
     };
-  }, [learner, t]);
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(document.head, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
+    return () => observer.disconnect();
+  }, [learner]);
 
   useEffect(() => {
     if (!drawerOpen) return;
