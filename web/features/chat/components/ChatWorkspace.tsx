@@ -46,7 +46,15 @@ import { PageCustomizeButton } from "@/components/customization/PageCustomizeBut
 import StarterSuggestions from "@/components/chat/home/StarterSuggestions";
 import MakerOpening, { ParentStartConfirm } from "@/components/chat/home/MakerOpening";
 import { useAuthStatus } from "@/hooks/useAuthStatus";
-import { composerPlaceholder, guidanceDensity, learnerCapabilityAllowed } from "@/lib/zaowu-home";
+import {
+  composerPlaceholder,
+  guidanceDensity,
+  learnerCapabilityAllowed,
+  makerOpening,
+  makerSpeaks,
+  spokenMakerPrompt,
+} from "@/lib/zaowu-home";
+import { speakMaker } from "@/lib/maker-speech";
 import { confirmLearnerSessionStart } from "@/lib/zaowu-api";
 // Imported eagerly so the drawer shell is always mounted off-screen —
 // clicking a chip becomes a single CSS class flip, no chunk fetch + double
@@ -2778,6 +2786,15 @@ export default function ChatWorkspace() {
                         <ParentStartConfirm
                           busy={parentConfirmBusy}
                           onConfirm={() => {
+                            if (makerSpeaks(makerDensity)) {
+                              const opening = makerOpening(makerDensity);
+                              speakMaker(
+                                spokenMakerPrompt(
+                                  opening.heading,
+                                  opening.choices.map((choice) => choice.label),
+                                ),
+                              );
+                            }
                             setParentConfirmBusy(true);
                             void confirmLearnerSessionStart()
                               .then(() => setParentConfirmed(true))
@@ -2876,6 +2893,7 @@ export default function ChatWorkspace() {
                             : undefined
                         }
                         activityName={learnerHome ? t("Zaowu") : undefined}
+                        makerDensity={learnerHome ? makerDensity : undefined}
                         onPreviewAttachment={handlePreviewMessageAttachment}
                         onOpenConsultation={(events) => {
                           const meta = events[0]?.metadata ?? {};

@@ -20,7 +20,7 @@ from deeptutor.multi_user.session_gate import (
     confirm_session_start,
     requires_start_confirmation,
 )
-from deeptutor.multi_user.zaowu_guidance import guidance_density
+from deeptutor.multi_user.zaowu_guidance import guidance_block, guidance_density
 from deeptutor.services.persona.service import PersonaService, PRESETS_DIR
 from deeptutor.services.skill.service import BUILTIN_SKILLS_ROOT, SkillService
 
@@ -163,6 +163,13 @@ def test_age_density_maps_product_ages_onto_builtin_bands():
     assert guidance_density(None, "6-8") == "early"
     assert guidance_density(None, "9-12") == "older"
     assert guidance_density(None, "13-15") == "older"
+    early = guidance_block(5, "6-8")
+    assert "还不认字" in early
+    assert "会跳的小球" in early
+    assert "打字" in early
+    middle = guidance_block(8, "6-8")
+    assert "短选项" in middle
+    assert "写一句" in middle
 
 
 def test_zaowu_persona_and_skill_are_shipped():

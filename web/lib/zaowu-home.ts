@@ -153,6 +153,74 @@ export function withoutMakerChoiceLines(text: string, choices: string[]): string
   return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+/**
+ * A picture a child can tap without reading the label. More specific words
+ * win, so 「会跳的小球」 is a ball and 「会动的」 stays a motion mark.
+ */
+export type MakerPicture =
+  | "ball"
+  | "star"
+  | "story"
+  | "classmates"
+  | "family"
+  | "web"
+  | "game"
+  | "play"
+  | "music"
+  | "draw"
+  | "animal"
+  | "idea"
+  | "direction"
+  | "motion"
+  | "spark";
+
+const PICTURE_RULES: ReadonlyArray<readonly [RegExp, MakerPicture]> = [
+  [/球/, "ball"],
+  [/星/, "star"],
+  [/故事|书/, "story"],
+  [/同学|讲给/, "classmates"],
+  [/家人|家里/, "family"],
+  [/网页|页面/, "web"],
+  [/游戏/, "game"],
+  [/玩/, "play"],
+  [/歌|唱|音乐/, "music"],
+  [/画|颜色|涂/, "draw"],
+  [/猫|狗|动物|鸟|鱼/, "animal"],
+  [/主意|点子|想法/, "idea"],
+  [/方向/, "direction"],
+  [/动|转|摆|跳|风/, "motion"],
+];
+
+export function makerPicture(label: string): MakerPicture {
+  for (const [pattern, picture] of PICTURE_RULES) {
+    if (pattern.test(label)) return picture;
+  }
+  return "spark";
+}
+
+/** 5–6 and 7–9 get a picture. 10–12 stays words. */
+export function makerShowsPictures(density: ZaowuDensity): boolean {
+  return density === "early" || density === "middle";
+}
+
+/** Only the youngest band is spoken. Older bands are not read aloud for them. */
+export function makerSpeaks(density: ZaowuDensity): boolean {
+  return density === "early";
+}
+
+/** One utterance: the prompt, then each choice, with a pause between them. */
+export function spokenMakerPrompt(heading: string, choices: readonly string[]): string {
+  const lead = heading.replace(/\s+/g, " ").trim();
+  const labels = choices.map((item) => item.trim()).filter(Boolean);
+  const options = labels
+    .map((label, index) => (index === 0 ? label : `或者，${label}`))
+    .join("。");
+  if (!lead) return options ? `${options}。` : "";
+  if (!options) return lead;
+  const gap = /[。！？]$/.test(lead) ? "" : "。";
+  return `${lead}${gap}${options}。`;
+}
+
 /** Empty-composer line. A continuation hint still wins once a chat has one. */
 export function composerPlaceholder(options: {
   learner: boolean;

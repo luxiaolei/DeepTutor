@@ -11,8 +11,13 @@ import {
   learnerStyleLabel,
   makerChoiceLines,
   makerOpening,
+  makerPicture,
+  makerShowsPictures,
+  makerSpeaks,
+  spokenMakerPrompt,
   withoutMakerChoiceLines,
 } from "../lib/zaowu-home";
+import { planMakerSpeech, recentlySpoken } from "../lib/maker-speech";
 
 test("product ages map onto the builtin bands", () => {
   assert.equal(guidanceDensity(5, "6-8"), "early");
@@ -105,6 +110,55 @@ test("maker chips send a choice and numbered replies become buttons", () => {
   assert.match(list, /zaowuLabel: t\("Zaowu"\)/);
   assert.match(list, /withoutMakerChoiceLines/);
   assert.match(source, /activityName=\{learnerHome \? t\("Zaowu"\) : undefined\}/);
+});
+
+test("youngest maker choices are pictures and a spoken prompt", () => {
+  assert.equal(makerPicture("会动的"), "motion");
+  assert.equal(makerPicture("会讲故事的"), "story");
+  assert.equal(makerPicture("会跳的小球"), "ball");
+  assert.equal(makerPicture("会摆动的小星星"), "star");
+  assert.equal(makerPicture("给家人看的"), "family");
+  assert.equal(makerPicture("能玩的"), "play");
+  assert.equal(makerPicture("小游戏"), "game");
+  assert.equal(makerPicture("一块安静的布"), "spark");
+  assert.equal(makerShowsPictures("early"), true);
+  assert.equal(makerShowsPictures("middle"), true);
+  assert.equal(makerShowsPictures("older"), false);
+  assert.equal(makerSpeaks("early"), true);
+  assert.equal(makerSpeaks("middle"), false);
+  assert.equal(makerSpeaks("older"), false);
+  const spoken = spokenMakerPrompt("今天我们一起做一个能给家人看的小东西。", ["会动的", "会讲故事的"]);
+  assert.match(spoken, /能给家人看的小东西/);
+  assert.match(spoken, /会动的/);
+  assert.match(spoken, /或者，会讲故事的/);
+  const plan = planMakerSpeech(spoken);
+  assert.equal(plan?.lang, "zh-CN");
+  assert.equal(plan?.text, spoken);
+  assert.equal(planMakerSpeech("   "), null);
+  assert.equal(recentlySpoken("还没说过"), false);
+  const opening = readFileSync(
+    path.resolve(process.cwd(), "components/chat/home/MakerOpening.tsx"),
+    "utf8",
+  );
+  assert.match(opening, /MakerSpeakerButton/);
+  assert.match(opening, /useSpokenMakerPrompt\(speak, spoken\)/);
+  const choices = readFileSync(
+    path.resolve(process.cwd(), "components/chat/home/MakerChoices.tsx"),
+    "utf8",
+  );
+  assert.match(choices, /data-maker-picture=\{name\}/);
+  assert.match(choices, /aria-label=\{"再听一遍"\}/);
+  const list = readFileSync(
+    path.resolve(process.cwd(), "features/chat/messages/ChatMessageList.tsx"),
+    "utf8",
+  );
+  const workspace = readFileSync(
+    path.resolve(process.cwd(), "features/chat/components/ChatWorkspace.tsx"),
+    "utf8",
+  );
+  assert.match(list, /<MakerChoiceRow/);
+  assert.match(workspace, /makerDensity=\{learnerHome \? makerDensity : undefined\}/);
+  assert.match(workspace, /speakMaker\(/);
 });
 
 test("learner home hides research capabilities and keeps visualize", () => {

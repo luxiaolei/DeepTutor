@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { makerOpening, type ZaowuDensity } from "@/lib/zaowu-home";
+import {
+  MakerChoiceButton,
+  MakerSpeakerButton,
+  useSpokenMakerPrompt,
+} from "@/components/chat/home/MakerChoices";
+import { makerOpening, makerSpeaks, spokenMakerPrompt, type ZaowuDensity } from "@/lib/zaowu-home";
 
 /**
  * Active first screen for a learner sitting with a parent.
@@ -45,34 +50,31 @@ export default function MakerOpening({
 }) {
   const [page, setPage] = useState(0);
   const opening = makerOpening(density, page);
-  const early = density === "early";
+  const labels = opening.choices.map((choice) => choice.label);
+  const spoken = spokenMakerPrompt(opening.heading, labels);
+  const speak = makerSpeaks(density);
+  useSpokenMakerPrompt(speak, spoken);
 
   return (
-    <div className="flex w-full flex-col items-center gap-6">
+    <div className="flex w-full flex-col items-center gap-6" data-maker-density={density}>
       <h1 className="max-w-[18em] text-center font-serif text-[32px] font-medium leading-[1.25] tracking-[-0.015em] text-[var(--foreground)] sm:text-[40px]">
         {opening.heading}
       </h1>
+      {speak ? <MakerSpeakerButton text={spoken} /> : null}
       <div
         className={
           "flex w-full max-w-[640px] flex-wrap items-stretch justify-center " +
-          (early ? "gap-3" : "gap-2")
+          (density === "early" ? "gap-3" : "gap-2")
         }
       >
         {opening.choices.map((choice) => (
-          <button
+          <MakerChoiceButton
             key={choice.prompt}
-            type="button"
+            label={choice.label}
+            density={density}
             disabled={disabled}
             onClick={() => onPick(choice.prompt)}
-            className={
-              "rounded-2xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-[var(--foreground)]/30 disabled:opacity-50 " +
-              (early
-                ? "min-h-16 min-w-[46%] px-6 py-4 text-xl font-medium"
-                : "min-h-12 px-4 py-3 text-base")
-            }
-          >
-            {choice.label}
-          </button>
+          />
         ))}
       </div>
       <button

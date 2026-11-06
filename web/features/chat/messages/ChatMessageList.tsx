@@ -12,10 +12,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { MakerChoiceRow } from "@/components/chat/home/MakerChoices";
 import {
   learnerStyleLabel,
   makerChoiceLines,
   withoutMakerChoiceLines,
+  type ZaowuDensity,
 } from "@/lib/zaowu-home";
 import {
   BookMarked,
@@ -747,6 +749,7 @@ export const AssistantMessage = memo(function AssistantMessage({
   onChallengeMasteryQuestion,
   onMakerChoice,
   activityName,
+  makerDensity = "older",
   researchRequestSnapshot,
   onTraceToggle,
   masteryGrades,
@@ -823,6 +826,8 @@ export const AssistantMessage = memo(function AssistantMessage({
   /** Name in the activity row. A learner session passes 造物 so the row
    *  does not fall back to DeepTutor. */
   activityName?: string;
+  /** How picture-heavy the choice buttons are. Youngest is spoken too. */
+  makerDensity?: ZaowuDensity;
 }) {
   const { t } = useTranslation();
   const events = useMemo(() => msg.events ?? [], [msg.events]);
@@ -1349,18 +1354,14 @@ export const AssistantMessage = memo(function AssistantMessage({
       askUserPayload ? (
         <AskUserOptions data={askUserPayload} onSubmit={submitReply} />
       ) : null}
-      {makerChoices.length > 0
-        ? makerChoices.map((choice) => (
-            <button
-              key={choice}
-              type="button"
-              onClick={() => onMakerChoice?.(choice)}
-              className="mr-2 mt-3 min-h-12 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 text-base text-[var(--foreground)]"
-            >
-              {choice}
-            </button>
-          ))
-        : null}
+      {makerChoices.length > 0 ? (
+        <MakerChoiceRow
+          density={makerDensity}
+          heading={answerText(body)}
+          choices={makerChoices}
+          onPick={(choice) => onMakerChoice?.(choice)}
+        />
+      ) : null}
       {/* Credential hand-off sits below whichever body branch rendered: it
           supplements the answer ("here's where to paste the key") rather than
           replacing it, and applies to every branch. */}
@@ -2197,6 +2198,7 @@ export const ChatMessageList = memo(function ChatMessageList({
   onChallengeMasteryQuestion,
   onMakerChoice,
   activityName,
+  makerDensity = "older",
   showModeBadge = true,
   onLoadMessageTrace,
   onReleaseMessageTrace,
@@ -2269,6 +2271,8 @@ export const ChatMessageList = memo(function ChatMessageList({
   onMakerChoice?: (choice: string) => void;
   /** Shown in the in-progress activity row instead of DeepTutor. */
   activityName?: string;
+  /** Picture and speech density for maker choice buttons. */
+  makerDensity?: ZaowuDensity;
   /** Names of KBs confirmed to exist. Omitted when the KB list is unavailable. */
   availableKbNames?: Set<string>;
   /** Qualified KB ref -> display name, from the same catalog the composer
@@ -2659,6 +2663,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                     : undefined
                 }
                 activityName={activityName}
+                makerDensity={makerDensity}
                 researchRequestSnapshot={
                   pairedUserMessage?.requestSnapshot ?? null
                 }
