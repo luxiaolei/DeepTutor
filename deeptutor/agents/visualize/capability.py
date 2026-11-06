@@ -94,6 +94,13 @@ class VisualizeCapability(TurnCapability):
         render_mode = request_config.render_mode
         i18n = StatusI18n(self.name, context.language, module="visualize")
         registry = get_visualizer_registry()
+        from deeptutor.multi_user.maker_gate import TALK, stage_from_context
+
+        maker_stage = stage_from_context(context)
+        # A finished Manim clip is a take-home artifact. Learners stay on the
+        # gated page path: talk, then a seed, then one change.
+        if maker_stage is not None and render_mode in _MANIM_RENDER_TYPES:
+            render_mode = "auto"
 
         history_context = str(context.metadata.get("conversation_context_text", "") or "").strip()
         async with stream.stage("analyzing", source=self.name):
@@ -186,6 +193,25 @@ class VisualizeCapability(TurnCapability):
         )
         loop_result = await pipeline.run(context, stream)
         envelope = context.metadata.get(VISUALIZATION_RESULT_KEY)
+        if maker_stage == TALK and not isinstance(envelope, dict):
+            prose = str(getattr(loop_result, "final_text", "") or "").strip()
+            if not prose:
+                prose = i18n.t(
+                    "maker_talk",
+                    "先选一个再做。想做会动的，会讲故事的，还是会出主意的？",
+                )
+            await emit_capability_result(
+                stream,
+                {
+                    "response": prose,
+                    "maker_stage": TALK,
+                    "engine": "chat_agent_loop",
+                    "loop": loop_result,
+                },
+                source=self.name,
+                usage=pipeline.usage,
+            )
+            return
         if not isinstance(envelope, dict):
             if tool_calling_disabled_for:
                 raise RuntimeError(
@@ -225,6 +251,7 @@ class VisualizeCapability(TurnCapability):
             },
             "engine": "chat_agent_loop",
             "loop": loop_result,
+            "maker_stage": maker_stage or "",
         }
         await emit_capability_result(
             stream,

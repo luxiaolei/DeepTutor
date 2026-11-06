@@ -44,6 +44,10 @@ import {
 } from "@/lib/session-load";
 import { PageCustomizeButton } from "@/components/customization/PageCustomizeButton";
 import StarterSuggestions from "@/components/chat/home/StarterSuggestions";
+import MakerOpening, { ParentStartConfirm } from "@/components/chat/home/MakerOpening";
+import { useAuthStatus } from "@/hooks/useAuthStatus";
+import { guidanceDensity, learnerCapabilityAllowed } from "@/lib/zaowu-home";
+import { confirmLearnerSessionStart } from "@/lib/zaowu-api";
 // Imported eagerly so the drawer shell is always mounted off-screen —
 // clicking a chip becomes a single CSS class flip, no chunk fetch + double
 // render. The heavy renderers inside still load lazily.
@@ -281,6 +285,39 @@ export default function ChatWorkspace() {
     isLoading: isCapabilityCatalogLoading,
     error: capabilityCatalogError,
   } = useCapabilityCatalog();
+  const auth = useAuthStatus();
+  const learnerHome = Boolean(auth.learningPolicy);
+  const makerDensity = guidanceDensity(auth.learnerAge, auth.learningPolicy?.ageBand);
+  const [parentConfirmed, setParentConfirmed] = useState(false);
+  const [parentConfirmBusy, setParentConfirmBusy] = useState(false);
+  const needsParentConfirm = Boolean(
+    learnerHome &&
+      auth.sessionStart?.required &&
+      !auth.sessionStart.confirmed &&
+      !parentConfirmed,
+  );
+  const homeCapabilities = useMemo(() => {
+    if (!learnerHome) return visibleCapabilities;
+    return visibleCapabilities
+      .filter((capability) =>
+        learnerCapabilityAllowed(
+          auth.learningPolicy?.allowedCapabilities,
+          capability.value,
+        ),
+      )
+      .map((capability) => ({
+        ...capability,
+        allowedTools: [],
+        defaultTools: [],
+      }));
+  }, [auth.learningPolicy, learnerHome, visibleCapabilities]);
+  useEffect(() => {
+    if (!learnerHome) return;
+    document.documentElement.dataset.zaowuDensity = makerDensity;
+    return () => {
+      delete document.documentElement.dataset.zaowuDensity;
+    };
+  }, [learnerHome, makerDensity]);
   const { setActiveSessionId, language: appLanguage } = useAppShell();
 
   const {
@@ -668,6 +705,18 @@ export default function ChatWorkspace() {
     state.activeCapability,
     state.isStreaming,
     state.sessionId,
+  ]);
+  useEffect(() => {
+    if (!learnerHome || state.isStreaming || !state.activeCapability) return;
+    if (!learnerCapabilityAllowed(auth.learningPolicy?.allowedCapabilities, state.activeCapability)) {
+      setCapability(null);
+    }
+  }, [
+    auth.learningPolicy,
+    learnerHome,
+    setCapability,
+    state.activeCapability,
+    state.isStreaming,
   ]);
   const isQuizMode = activeCap.value === "deep_question";
   const isVisualizeMode = activeCap.value === "visualize";
@@ -2003,6 +2052,10 @@ export default function ChatWorkspace() {
 
   const handleSend = useCallback(
     async (content: string) => {
+      if (needsParentConfirm) {
+        notify("请家长确认后再开始这一次。", { tone: "error" });
+        return;
+      }
       // An existing session saves its selector before the next turn starts.
       // The composer may be used immediately after changing the dropdown.
       if (!(await waitForReplyLanguageSave(
@@ -2227,6 +2280,7 @@ export default function ChatWorkspace() {
       selectedPartner,
       submitUserReply,
       t,
+      needsParentConfirm,
       visualizeConfig,
     ],
   );
@@ -2671,7 +2725,7 @@ export default function ChatWorkspace() {
                 ) : null}
               </PageBarSlot>
               <PageBarSlot name="actions" className="flex shrink-0 items-center gap-0.5">
-                <PageCustomizeButton page="chat" capabilities={visibleCapabilities} compact />
+                <PageCustomizeButton page="chat" capabilities={homeCapabilities} compact />
                 <HeaderActionButton
                   onClick={() => viewerPanelRef.current?.openMarkdownNoteTab()}
                   icon={NotebookPen}
@@ -2718,6 +2772,29 @@ export default function ChatWorkspace() {
                 // Clipped rather than pushed under the header when a short
                 // window leaves the greeting no room.
                 <div className="flex w-full flex-1 min-h-0 items-end justify-center overflow-hidden pb-14 animate-fade-in px-6">
+                  {learnerHome ? (
+                    <div className="w-full max-w-[960px]">
+                      {needsParentConfirm ? (
+                        <ParentStartConfirm
+                          busy={parentConfirmBusy}
+                          onConfirm={() => {
+                            setParentConfirmBusy(true);
+                            void confirmLearnerSessionStart()
+                              .then(() => setParentConfirmed(true))
+                              .catch(() =>
+                                notify("请家长确认后再开始这一次。", { tone: "error" }),
+                              )
+                              .finally(() => setParentConfirmBusy(false));
+                          }}
+                        />
+                      ) : (
+                        <MakerOpening
+                          density={makerDensity}
+                          onPick={(prompt) => handlePrefillComposer(prompt)}
+                        />
+                      )}
+                    </div>
+                  ) : (
                   <div className="w-full max-w-[960px] flex items-center justify-center gap-4">
                     <img
                       src="/brand/black-logo.png"
@@ -2731,6 +2808,7 @@ export default function ChatWorkspace() {
                       {t(welcomeGreeting)}
                     </h1>
                   </div>
+                  )}
                 </div>
               ) : (
                 // Positioned wrapper spanning exactly the scrollport, so the
@@ -2938,7 +3016,7 @@ export default function ChatWorkspace() {
                 capabilityNeedsConfig={capabilityNeedsConfig}
                 capabilityConfigConfirmed={capabilityConfigConfirmed}
                 onRequestConfigConfirm={ensureActivityPanelOpen}
-                capabilities={visibleCapabilities}
+                capabilities={homeCapabilities}
                 onSetCapMenuOpen={setCapMenuOpen}
                 onSetSpaceMenuOpen={setSpaceMenuOpen}
                 onToggleKB={handleToggleKB}
@@ -3034,7 +3112,7 @@ export default function ChatWorkspace() {
                 up with the composer on the empty screen and disappear the
                 moment the conversation has a first message. Picking one only
                 writes it into the composer: sending stays the learner's. */}
-              {!hasMessages ? (
+              {!hasMessages && !learnerHome ? (
                 <StarterSuggestions
                   workspaceId={state.workspaceId || ""}
                   onPick={handlePrefillComposer}

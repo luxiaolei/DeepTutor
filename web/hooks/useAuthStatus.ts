@@ -6,6 +6,9 @@ import { fetchAuthStatus } from "@/lib/auth";
 export interface LearningPolicyState {
   /** Surfaces this account may open. Everything else is hidden, not a 403. */
   allowedSurfaces: string[];
+  allowedCapabilities: string[];
+  ageBand: string;
+  lockedPersona: string;
 }
 
 export interface AuthStatusState {
@@ -27,6 +30,9 @@ export interface AuthStatusState {
    * absent instead of offered and then rejected (#1222).
    */
   learningPolicy: LearningPolicyState | null;
+  /** Null when this account is not a learner sitting. */
+  sessionStart: { required: boolean; confirmed: boolean } | null;
+  learnerAge: number | null;
 }
 
 const INITIAL: AuthStatusState = {
@@ -37,6 +43,8 @@ const INITIAL: AuthStatusState = {
   statusAvailable: false,
   loading: true,
   learningPolicy: null,
+  sessionStart: null,
+  learnerAge: null,
 };
 
 function learningPolicyFromStatus(
@@ -47,7 +55,14 @@ function learningPolicyFromStatus(
   const surfaces = (policy.allowed_surfaces ?? ["chat", "reading"]).filter(
     (surface) => surface.trim().length > 0,
   );
-  return { allowedSurfaces: surfaces.length ? surfaces : ["chat", "reading"] };
+  return {
+    allowedSurfaces: surfaces.length ? surfaces : ["chat", "reading"],
+    allowedCapabilities: (policy.allowed_capabilities ?? []).filter(
+      (name) => name.trim().length > 0,
+    ),
+    ageBand: policy.age_band ?? "",
+    lockedPersona: policy.locked_persona ?? "",
+  };
 }
 
 /**
@@ -72,6 +87,14 @@ function loadAuthStatus(): Promise<AuthStatusState> {
     statusAvailable: status !== null,
     loading: false,
     learningPolicy: learningPolicyFromStatus(status),
+    sessionStart: status?.session_start
+      ? {
+          required: Boolean(status.session_start.required),
+          confirmed: Boolean(status.session_start.confirmed),
+        }
+      : null,
+    learnerAge:
+      typeof status?.learner_age === "number" ? status.learner_age : null,
   }));
 }
 

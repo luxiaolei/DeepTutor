@@ -612,7 +612,12 @@ async def soul_sources():
             content = strip_frontmatter(service.get_detail(info.name).content)
         except Exception:
             content = ""
-        return {"name": info.name, "description": info.description, "content": content}
+        return {
+            "name": info.name,
+            "title": str(getattr(info, "title", "") or ""),
+            "description": info.description,
+            "content": content,
+        }
 
     personas: list[dict[str, str]] = []
     seen: set[str] = set()
@@ -630,8 +635,19 @@ async def soul_sources():
         for info in admin_service.list_personas():
             if info.name not in seen:
                 personas.append(_persona_entry(admin_service, info))
+                seen.add(info.name)
     except Exception:
         logger.warning("Failed to list admin personas", exc_info=True)
+    try:
+        from deeptutor.services.persona.service import PRESETS_DIR
+
+        bundled = PersonaService(root=PRESETS_DIR)
+        for info in bundled.list_personas():
+            if info.name not in seen:
+                personas.append(_persona_entry(bundled, info))
+                seen.add(info.name)
+    except Exception:
+        logger.warning("Failed to list bundled personas", exc_info=True)
 
     return {"library": get_partner_manager().list_souls(), "personas": personas}
 
@@ -642,6 +658,10 @@ async def soul_sources():
 @router.get("")
 async def list_partners():
     """Partners the caller may talk to — theirs in full, assigned ones as cards."""
+    try:
+        get_partner_manager().ensure_default_zaowu_partner()
+    except Exception:
+        logger.warning("造物 partner seed skipped", exc_info=True)
     return visible_partners()
 
 

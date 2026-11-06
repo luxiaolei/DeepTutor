@@ -1489,6 +1489,7 @@ const QuestionBody = memo(function QuestionBody({
                 onClick={() => !locked && onPickOption(option.label)}
                 disabled={locked}
                 aria-pressed={isPicked}
+                data-zaowu-choice="true"
                 className={
                   "group -mx-1.5 flex w-[calc(100%+0.75rem)] items-start gap-2.5 rounded-lg px-1.5 py-1 text-left transition-colors " +
                   (isPicked

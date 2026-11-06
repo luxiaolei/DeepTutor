@@ -5289,7 +5289,7 @@
   "TPS": "TPS",
   "TTFT": "TTFT",
   "Teacher": "Enseignant",
-  "Teacher persona; Chat and Immersive Reading only": "Persona enseignant ; conversation et lecture immersive uniquement",
+  "Teacher persona; Chat and Immersive Reading only": "Persona Zaowu ; conversation, visualisation et lecture immersive",
   "Tell the tutor in a session if any of this has changed.": "Signalez au tuteur en session si l'un de ces éléments a changé.",
   "Test again": "Retester",
   "Test details": "Détails du test",
@@ -7311,5 +7311,8 @@
   "Availability refreshed. This parser is still unavailable; check the installation and startup logs, then retry.": "Disponibilité actualisée. Ce parseur reste indisponible ; vérifiez l’installation et les journaux de démarrage, puis réessayez.",
   "language.portuguese": "Portugais",
   "language.japanese": "Japonais",
-  "language.turkish": "Türkçe"
+  "language.turkish": "Türkçe",
+  "Zaowu": "Zaowu",
+  "Chat · Visualize · Immersive Reading": "Conversation · Visualiser · Lecture immersive",
+  "Confirm this session": "Confirmer cette séance"
 }

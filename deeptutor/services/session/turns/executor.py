@@ -613,6 +613,7 @@ class TurnExecutor:
 
             current_user = get_current_user()
             learner_profile_prompt = ""
+            account = None
             if not current_user.is_admin:
                 from deeptutor.multi_user.identity import get_user_by_id
                 from deeptutor.multi_user.learner_profile import prompt_block
@@ -631,9 +632,31 @@ class TurnExecutor:
             )
             active_persona = requested_persona if persona_context else ""
 
+            from deeptutor.multi_user.learning_access import current_learning_policy
             from deeptutor.services.skill.runtime import skill_manifest
 
             skills_manifest = skill_manifest()
+            learning_policy = current_learning_policy()
+            if learning_policy is not None:
+                from deeptutor.multi_user.zaowu_guidance import guidance_block, profile_age
+                from deeptutor.services.skill.service import BUILTIN_SKILLS_ROOT, SkillService
+
+                zaowu_skill = SkillService(
+                    root=BUILTIN_SKILLS_ROOT, builtin_root=None
+                ).load_for_context(["zaowu"])
+                if zaowu_skill:
+                    skills_manifest = "\n\n".join(
+                        part for part in (zaowu_skill, skills_manifest) if part
+                    )
+                profile = account[1].get("learner_profile") if account else None
+                density = guidance_block(
+                    profile_age(profile),
+                    str(learning_policy.get("age_band") or ""),
+                )
+                if density:
+                    persona_context = "\n\n".join(
+                        part for part in (persona_context, density) if part
+                    )
 
             # Chat capability uses the lightweight manifest + read_source
             # affordance (no upstream LLM call, no wholesale-dump into the
@@ -959,7 +982,11 @@ class TurnExecutor:
                 enabled_tools=payload.get("tools"),
                 # A side chat stays isolated from global memory and every
                 # other auto-mounted built-in.
-                allowed_builtin_tools=[] if side_chat_context else None,
+                allowed_builtin_tools=(
+                    []
+                    if side_chat_context
+                    else (["ask_user", "read_skill"] if learning_policy is not None else None)
+                ),
                 active_capability=payload.get("capability"),
                 knowledge_bases=payload.get("knowledge_bases", []),
                 attachments=attachments,

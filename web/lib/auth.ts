@@ -33,6 +33,10 @@ export interface AuthStatus {
       extensions: string[];
     };
   } | null;
+  /** Primary-age learners need a parent tap before a new sitting. */
+  session_start?: { required: boolean; confirmed: boolean } | null;
+  /** Learner profile age when the parent has set one. */
+  learner_age?: number | null;
 }
 
 const AUTH_STATUS_CACHE_MS = 5_000;

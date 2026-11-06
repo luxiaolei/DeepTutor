@@ -118,9 +118,10 @@ def test_migrate_is_idempotent(tmp_path: Path) -> None:
 def test_seed_presets_creates_defaults(service: PersonaService) -> None:
     # Issue #659: fresh installs must expose peer / teacher / research-assistant.
     seeded = service.seed_presets()
-    assert set(seeded) == {"peer", "teacher", "research-assistant"}
+    assert set(seeded) == {"peer", "teacher", "research-assistant", "zaowu"}
     names = {p.name for p in service.list_personas()}
-    assert {"peer", "teacher", "research-assistant"} <= names
+    assert {"peer", "teacher", "research-assistant", "zaowu"} <= names
+    assert service.get_detail("zaowu").title == "造物"
     teacher = service.get_detail("teacher")
     assert teacher.description  # frontmatter description survived
     assert "Teacher Mode" in teacher.content

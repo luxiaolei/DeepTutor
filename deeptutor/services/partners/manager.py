@@ -1060,6 +1060,49 @@ class PartnerManager:
                 ids.add(entry.name)
         return ids
 
+    def ensure_default_zaowu_partner(self) -> bool:
+        """Install one 造物 partner when the roster is still empty.
+
+        A marker stops the partner from coming back after it is removed, and
+        skips installs that already have other partners. ``auto_start`` stays
+        off: this is a local companion, not an IM connection.
+        """
+        marker = self._partners_dir / ".zaowu-seeded"
+        try:
+            if marker.exists() or self.partner_exists("zaowu"):
+                return False
+            if self._discover_partner_ids():
+                marker.parent.mkdir(parents=True, exist_ok=True)
+                marker.write_text("skipped\n", encoding="utf-8")
+                return False
+            from deeptutor.services.partners.workspace import strip_frontmatter, write_soul
+            from deeptutor.services.persona.service import PRESETS_DIR, PERSONA_FILE
+
+            persona_file = PRESETS_DIR / "zaowu" / PERSONA_FILE
+            soul = ""
+            if persona_file.is_file():
+                soul = strip_frontmatter(persona_file.read_text(encoding="utf-8")).strip()
+            if not soul:
+                soul = "# 造物\n\n家长陪同下，带着孩子一步步做小作品。不一次做完。\n"
+            config = PartnerConfig(
+                name="造物",
+                description="家长陪同下，带着孩子一步步做出能给家人看的小作品。",
+                language="zh",
+                emoji="🌱",
+                enabled_tools=[],
+                builtin_tools=["ask_user", "read_skill"],
+                mcp_tools=[],
+                soul_origin={"type": "persona", "id": "zaowu"},
+            )
+            self.save_config("zaowu", config, auto_start=False)
+            write_soul("zaowu", soul + "\n")
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            marker.write_text("seeded\n", encoding="utf-8")
+            return True
+        except Exception:
+            logger.exception("Failed to seed the default 造物 partner")
+            return False
+
     def list_partners(self) -> list[dict[str, Any]]:
         """All known partners (running + configured on disk); channels keys-only."""
         result: dict[str, dict[str, Any]] = {}
@@ -1653,6 +1696,27 @@ class PartnerManager:
 # channels, so every template bakes in a chat-sized voice.
 
 DEFAULT_SOUL_TEMPLATES: tuple[dict[str, str], ...] = (
+    {
+        "id": "zaowu",
+        "name": "造物",
+        "content": """# 造物
+
+家长坐在旁边。我带着孩子做一件能给家人看的小作品，孩子做选择，我不一次做完。
+
+## 顺序
+
+- 先说话，给两三个选项
+- 孩子选过之后，才给一小块能看见的种子
+- 请孩子检查，只改他说的一处
+
+## 不做的事
+
+- 不扮演爸爸妈妈，不帮孩子瞒着家长
+- 不收集姓名、学校、住址、照片
+- 作业只问不答，作文只帮理思路
+- 不承诺提分、证书或奖
+""",
+    },
     {
         "id": "companion",
         "name": "Learning Companion",

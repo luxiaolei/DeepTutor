@@ -662,6 +662,50 @@ async def get_guardian_restrictions(
     }
 
 
+@router.post("/session-start")
+async def confirm_own_session_start(
+    current: object = Depends(require_auth),
+) -> dict[str, Any]:
+    """Parent-on-device tap before a primary-age learner's next sitting."""
+    _ = current
+    from deeptutor.multi_user.learning_access import learning_policy_for_user
+    from deeptutor.multi_user.session_gate import confirm_session_start, session_start_status
+
+    user = get_current_user()
+    policy = learning_policy_for_user(user.id, is_admin=user.is_admin)
+    if policy is None:
+        raise HTTPException(status_code=400, detail="This account has no learning policy.")
+    confirm_session_start(user.id, actor_id=user.id)
+    return {"session_start": session_start_status(user.id, policy)}
+
+
+@router.post("/learners/{learner_user_id}/session-start")
+async def confirm_learner_session_start(
+    learner_user_id: str,
+    current: object = Depends(require_auth),
+) -> dict[str, Any]:
+    """Guardian confirmation using the existing manage-restrictions permission."""
+    _learner_username, learner_record, actor_user_id, is_admin = _require_guardian_access(
+        current, learner_user_id, "manage_restrictions"
+    )
+    from deeptutor.multi_user.learning_access import learning_policy_for_user
+    from deeptutor.multi_user.session_gate import confirm_session_start, session_start_status
+
+    policy = _restriction_grant(learner_user_id, learner_record).get("learning_policy")
+    if not isinstance(policy, dict):
+        policy = learning_policy_for_user(learner_user_id, is_admin=False)
+    if not isinstance(policy, dict):
+        raise HTTPException(status_code=409, detail="Learner account has no learning policy")
+    confirm_session_start(learner_user_id, actor_id=actor_user_id)
+    _log_supervisor_action(
+        "guardian_session_start",
+        actor_user_id=actor_user_id,
+        learner_user_id=learner_user_id,
+        is_admin=is_admin,
+    )
+    return {"session_start": session_start_status(learner_user_id, policy)}
+
+
 @router.put("/learners/{learner_user_id}/restrictions")
 async def put_guardian_restrictions(
     learner_user_id: str,

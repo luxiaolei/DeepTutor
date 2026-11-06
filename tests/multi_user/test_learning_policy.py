@@ -172,7 +172,10 @@ def test_learner_preset_falls_back_to_the_conservative_policy(mu_isolated_root, 
     policy = learning_policy_for_user(learner["id"], is_admin=False)
 
     assert policy is not None
-    assert policy["default_capability"] == "immersive_reading"
+    assert policy["locked_persona"] == "zaowu"
+    assert policy["default_capability"] == "chat"
+    assert "visualize" in policy["allowed_capabilities"]
+    assert "deep_research" not in policy["allowed_capabilities"]
     assert policy["allowed_surfaces"] == ["chat", "reading"]
     assert policy["reading"] == {
         "allow_upload": False,

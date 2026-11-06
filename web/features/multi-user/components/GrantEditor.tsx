@@ -40,9 +40,9 @@ const LEARNING_AGE_BANDS = ["6-8", "9-12", "13-15"] as const;
 function conservativeLearningPolicy(): LearningPolicy {
   return {
     age_band: "9-12",
-    locked_persona: "teacher",
-    allowed_capabilities: ["chat", "immersive_reading"],
-    default_capability: "immersive_reading",
+    locked_persona: "zaowu",
+    allowed_capabilities: ["chat", "visualize", "immersive_reading"],
+    default_capability: "chat",
     allowed_surfaces: ["chat", "reading"],
     reading: {
       allow_upload: false,
@@ -521,6 +521,7 @@ export function GrantEditor({
                         disabled
                         className="h-8 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2"
                       >
+                        <option value="zaowu">{t("Zaowu")}</option>
                         <option value="teacher">{t("Teacher")}</option>
                       </select>
                     </label>
@@ -533,7 +534,7 @@ export function GrantEditor({
                           size={14}
                           className="text-[var(--muted-foreground)]"
                         />
-                        <span>{t("Chat · Immersive Reading")}</span>
+                        <span>{t("Chat · Visualize · Immersive Reading")}</span>
                       </div>
                     </div>
                     <div className="grid gap-3 sm:col-span-3 lg:grid-cols-2">

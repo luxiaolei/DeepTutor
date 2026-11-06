@@ -1548,3 +1548,11 @@ a[href^="#dt-locator-"]:hover {
   font-size: 16px;
   line-height: 1.5;
 }
+
+/* Younger 造物 sittings get larger choice buttons inside ask-user cards. */
+html[data-zaowu-density="early"] [data-zaowu-choice="true"] {
+  min-height: 3.25rem;
+  padding-top: 0.7rem;
+  padding-bottom: 0.7rem;
+  font-size: 1.125rem;
+}

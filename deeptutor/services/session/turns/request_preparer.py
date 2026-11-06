@@ -364,6 +364,19 @@ class TurnRequestPreparer:
             payload = apply_learning_policy({**payload, "capability": capability})
         except PermissionError as exc:
             raise RuntimeError(str(exc)) from exc
+        try:
+            from deeptutor.multi_user.context import get_current_user
+            from deeptutor.multi_user.learning_access import current_learning_policy
+            from deeptutor.multi_user.session_gate import assert_session_start_allowed
+
+            last_user = await self.store.get_last_message(session["id"], role="user")
+            assert_session_start_allowed(
+                current_learning_policy(),
+                session_has_user_message=last_user is not None,
+                user_id=get_current_user().id,
+            )
+        except PermissionError as exc:
+            raise RuntimeError(str(exc)) from exc
 
         payload.pop("timed_media_id", None)
         payload.pop("timed_media_viewport", None)

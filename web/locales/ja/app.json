@@ -3703,7 +3703,7 @@
   "Create an ordinary account with the default workspace behavior.": "デフォルトのワークスペース動作で通常のアカウントを作成します。",
   "Learning policy": "学習ポリシー",
   "Enable learning policy": "学習ポリシーを有効にする",
-  "Teacher persona; Chat and Immersive Reading only": "教師ペルソナ、チャットと没入型リーディングのみ",
+  "Teacher persona; Chat and Immersive Reading only": "造物ペルソナ。チャット、ビジュアル、没入読書",
   "Age band": "年齢層",
   "Teacher": "教師",
   "Modes": "モード",
@@ -6406,5 +6406,8 @@
   "Learning text preview": "学習テキストのプレビュー",
   "Reset learning text": "学習テキストをリセット",
   "language.portuguese": "Português",
-  "language.turkish": "Türkçe"
+  "language.turkish": "Türkçe",
+  "Zaowu": "造物",
+  "Chat · Visualize · Immersive Reading": "チャット · ビジュアル · 没入読書",
+  "Confirm this session": "今回の開始を確認"
 }

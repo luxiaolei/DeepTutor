@@ -6,7 +6,7 @@ import { ArrowUpRight, Bot, MessageCircle, Minus, Plus, UserRound, Users } from 
 import { useTranslation } from "react-i18next";
 import { agentGlyph, agentKindLabel } from "@/components/agents/agent-icons";
 import PartnerAvatar from "@/components/partners/PartnerAvatar";
-import { listPersonas, type PersonaInfo } from "@/lib/personas-api";
+import { listPersonas, personaLabel, type PersonaInfo } from "@/lib/personas-api";
 import type { PartnerInfo } from "@/lib/partners-api";
 import type { PartnerGroup } from "@/lib/partner-groups-api";
 import type { ResourceKind } from "@/lib/resource-reuse";
@@ -197,7 +197,7 @@ function AnswerList({
                   close();
                 }}
                 leading={<UserRound size={14} strokeWidth={1.7} />}
-                title={item.name}
+                title={personaLabel(item)}
                 meta={item.description}
               />
             ))}

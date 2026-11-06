@@ -62,10 +62,12 @@ class PersonaInfo:
     name: str
     description: str
     source: str = "user"  # "user" | "admin"
+    title: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
+            "title": self.title,
             "description": self.description,
             "source": self.source,
             "read_only": self.source != "user",
@@ -78,10 +80,12 @@ class PersonaDetail:
     description: str
     content: str
     source: str = "user"
+    title: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
+            "title": self.title,
             "description": self.description,
             "content": self.content,
             "source": self.source,
@@ -178,6 +182,7 @@ class PersonaService:
                 PersonaInfo(
                     name=entry.name,
                     description=str(meta.get("description") or "").strip(),
+                    title=str(meta.get("title") or "").strip(),
                 )
             )
         return out
@@ -192,6 +197,7 @@ class PersonaService:
             name=self._validate_name(name),
             description=str(meta.get("description") or "").strip(),
             content=text,
+            title=str(meta.get("title") or "").strip(),
         )
 
     def load_for_context(self, name: str) -> str:
@@ -221,7 +227,7 @@ class PersonaService:
             "Embody the persona below for this entire conversation. It sets your "
             "voice and outranks any tone a mode above prescribes; carry out that "
             "mode's steps in this voice.\n\n"
-            f"### Persona: {detail.name}\n\n{body}"
+            f"### Persona: {detail.title or detail.name}\n\n{body}"
         )
 
     # ── public write API ────────────────────────────────────────────────
@@ -278,8 +284,8 @@ class PersonaService:
         """Copy bundled default personas into this root for any missing name.
 
         Idempotent and non-destructive: a persona that already exists (a user
-        edit or a prior seed) is never overwritten. Seeding the admin workspace
-        makes ``peer`` / ``teacher`` / ``research-assistant`` appear as
+        edit or a prior seed) is never overwritten.         Seeding the admin workspace
+        makes ``peer`` / ``teacher`` / ``research-assistant`` / ``zaowu`` appear as
         read-only presets on fresh installs (issue #659). Returns seeded names.
         """
         if not PRESETS_DIR.is_dir():
@@ -413,7 +419,12 @@ def load_visible_for_context(
         from deeptutor.multi_user.paths import get_admin_path_service
 
         admin = PersonaService(root=get_admin_path_service().get_workspace_dir() / "personas")
-    return admin.load_for_context(name)
+    text = admin.load_for_context(name)
+    if text:
+        return text
+    # Bundled presets still apply before startup has copied them into the
+    # admin workspace, so a locked learner persona is never a silent miss.
+    return PersonaService(root=PRESETS_DIR).load_for_context(name)
 
 
 __all__ = [

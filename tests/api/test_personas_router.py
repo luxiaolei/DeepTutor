@@ -37,10 +37,16 @@ def test_admin_inside_a_workspace_still_sees_the_account_presets(
     _route_roots(monkeypatch, presets=presets, active=workspace)
 
     listed = asyncio.run(router.list_personas())["personas"]
-    assert [(p["name"], p["source"], p["read_only"]) for p in listed] == [
-        ("socratic", "admin", True)
-    ]
+    names = [p["name"] for p in listed]
+    assert names.count("socratic") == 1
+    assert "zaowu" in names
+    socratic = next(p for p in listed if p["name"] == "socratic")
+    assert (socratic["source"], socratic["read_only"]) == ("admin", True)
+    zaowu = next(p for p in listed if p["name"] == "zaowu")
+    assert zaowu["title"] == "造物"
+    assert zaowu["read_only"] is True
     assert asyncio.run(router.get_persona("socratic"))["read_only"] is True
+    assert asyncio.run(router.get_persona("zaowu"))["title"] == "造物"
 
 
 def test_reading_the_preset_directory_itself_lists_each_persona_once(
@@ -52,4 +58,9 @@ def test_reading_the_preset_directory_itself_lists_each_persona_once(
     _route_roots(monkeypatch, presets=presets, active=presets)
 
     listed = asyncio.run(router.list_personas())["personas"]
-    assert [(p["name"], p["source"]) for p in listed] == [("socratic", "user")]
+    names = [p["name"] for p in listed]
+    assert names.count("socratic") == 1
+    assert "zaowu" in names
+    socratic = next(p for p in listed if p["name"] == "socratic")
+    assert socratic["source"] == "user"
+    assert next(p for p in listed if p["name"] == "zaowu")["read_only"] is True

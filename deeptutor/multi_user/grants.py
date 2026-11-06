@@ -22,11 +22,19 @@ GRANTS_DIR = SYSTEM_ROOT / "grants"
 # KidsAI: learners may also use ``visualize``. Its output is rendered in an
 # ``<iframe sandbox="allow-scripts">`` (no same-origin, no forms/popups), so a
 # child can turn an idea into a runnable page without exec or network tools.
+# The maker gate still refuses a finished artifact on the first sentence.
 LEARNING_CAPABILITIES = {"chat", "immersive_reading", "visualize"}
+# Built-in bands. Product copy says 5–6 / 7–9 / 10–12. Map them in
+# ``zaowu_guidance.guidance_density``: profile age wins; band ``6-8`` falls
+# back to the shortest density, ``9-12`` to the older primary density, and
+# ``13-15`` is above the marketed range.
 LEARNING_AGE_BANDS = {"6-8", "9-12", "13-15"}
-# KidsAI: ``zaowu`` is the "maker assistant" persona (see PERSONA.md in the
-# learner/admin workspace). ``teacher`` stays the default for new learners.
+# ``zaowu`` (造物) is the locked maker persona for new learners. ``teacher``
+# remains allowlisted for an existing grant that still names it.
 LEARNING_PERSONAS = {"teacher", "zaowu"}
+# Tools a learner turn may keep. Everything else — web search, exec, research
+# builtins, workspace writes — is dropped even if a pipeline would auto-mount it.
+LEARNER_TOOL_ALLOWLIST = frozenset({"ask_user", "read_skill", "submit_visualization"})
 LEARNING_SURFACES = {"books", "chat", "reading"}
 _EXTENSION_ID_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 _GRANT_THREAD_LOCKS: dict[Path, threading.Lock] = {}
@@ -205,9 +213,9 @@ def learner_grant(user_id: str) -> dict[str, Any]:
             "exec_enabled": False,
             "learning_policy": {
                 "age_band": "9-12",
-                "locked_persona": "teacher",
-                "allowed_capabilities": ["chat", "immersive_reading"],
-                "default_capability": "immersive_reading",
+                "locked_persona": "zaowu",
+                "allowed_capabilities": ["chat", "visualize", "immersive_reading"],
+                "default_capability": "chat",
                 "allowed_surfaces": ["chat", "reading"],
                 "reading": {
                     "allow_upload": False,

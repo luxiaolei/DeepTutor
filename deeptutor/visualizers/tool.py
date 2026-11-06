@@ -95,7 +95,34 @@ class SubmitVisualizationTool(BaseTool):
                 success=False,
             )
 
-        ok, data, error = plugin.validate_payload(str(kwargs.get("payload") or ""))
+        from deeptutor.multi_user.maker_gate import (
+            SEED,
+            TALK,
+            seed_payload_error,
+            stage_from_context,
+        )
+
+        maker_stage = stage_from_context(context)
+        raw_payload = str(kwargs.get("payload") or "")
+        if maker_stage == TALK:
+            return ToolResult(
+                content=(
+                    "No visualization yet. The child has not chosen. Offer 2 or 3 "
+                    "choices and do not submit a payload on this turn."
+                ),
+                success=False,
+                metadata={"maker_stage": TALK},
+            )
+        if maker_stage == SEED:
+            seed_error = seed_payload_error(visualizer_id, raw_payload)
+            if seed_error:
+                return ToolResult(
+                    content=seed_error,
+                    success=False,
+                    metadata={"maker_stage": SEED, "validation_error": seed_error},
+                )
+
+        ok, data, error = plugin.validate_payload(raw_payload)
         if not ok:
             return ToolResult(
                 content=(

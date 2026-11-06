@@ -5,7 +5,7 @@ import { Check, Loader2, Search, UserRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import PickerShell from "@/components/common/PickerShell";
 import PickerHeader from "@/components/common/PickerHeader";
-import { listPersonas, type PersonaInfo } from "@/lib/personas-api";
+import { listPersonas, personaLabel, type PersonaInfo } from "@/lib/personas-api";
 
 interface PersonaPickerProps {
   open: boolean;
@@ -160,7 +160,7 @@ export default function PersonaPicker({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="truncate text-[14px] font-medium text-[var(--foreground)]">
-                            {persona.name}
+                            {personaLabel(persona)}
                           </span>
                           {persona.source === "admin" ? (
                             <span className="rounded-md bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">

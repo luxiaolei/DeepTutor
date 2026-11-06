@@ -9,6 +9,13 @@ from .context import get_current_user
 from .grants import load_grant
 
 
+def restrict_learner_tools(names: list[str]) -> list[str]:
+    """Keep the maker allowlist and drop adult tools a pipeline would auto-mount."""
+    from deeptutor.multi_user.grants import LEARNER_TOOL_ALLOWLIST
+
+    return [name for name in names if name in LEARNER_TOOL_ALLOWLIST]
+
+
 def learning_policy_for_user(user_id: str, *, is_admin: bool = False) -> dict[str, Any] | None:
     """Return the sanitized public policy for an account."""
     if is_admin:
@@ -135,4 +142,5 @@ __all__ = [
     "learning_material_allowed",
     "learning_policy_for_user",
     "learning_surface_allowed",
+    "restrict_learner_tools",
 ]
