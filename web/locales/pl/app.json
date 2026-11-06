@@ -6428,5 +6428,11 @@
   "Availability refreshed. This parser is still unavailable; check the installation and startup logs, then retry.": "Dostępność odświeżona. Ten parser nadal jest niedostępny; sprawdź instalację i dzienniki uruchamiania, a następnie ponów próbę.",
   "language.portuguese": "Portugalski",
   "language.japanese": "Japoński",
-  "language.turkish": "Türkçe"
+  "language.turkish": "Türkçe",
+  "Zaowu": "Zaowu",
+  "Chat · Visualize · Immersive Reading": "Chat · Visualize · Immersive Reading",
+  "Confirm this session": "Confirm this session",
+  "What shall we make?": "What shall we make? Pick one, or say it.",
+  "We are thinking together…": "Pomyślmy razem…",
+  "We thought of it": "Gotowe"
 }

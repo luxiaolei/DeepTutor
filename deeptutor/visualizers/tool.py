@@ -95,7 +95,50 @@ class SubmitVisualizationTool(BaseTool):
                 success=False,
             )
 
-        ok, data, error = plugin.validate_payload(str(kwargs.get("payload") or ""))
+        from deeptutor.multi_user.maker_gate import (
+            SEED,
+            TALK,
+            seed_payload_error,
+            stage_from_context,
+        )
+
+        maker_stage = stage_from_context(context)
+        raw_payload = str(kwargs.get("payload") or "")
+        if maker_stage == TALK:
+            return ToolResult(
+                content=(
+                    "No visualization yet. The child has not chosen. Offer 2 or 3 "
+                    "choices and do not submit a payload on this turn."
+                ),
+                success=False,
+                metadata={"maker_stage": TALK},
+            )
+        if maker_stage == SEED:
+            topic = "\n".join(
+                [
+                    str(getattr(context, "user_message", "") or ""),
+                    *[
+                        str(message.get("content") or "")
+                        for message in (getattr(context, "conversation_history", None) or [])
+                        if isinstance(message, dict)
+                    ],
+                ]
+            )
+            seed_error = seed_payload_error(visualizer_id, raw_payload)
+            if not seed_error and "蝴蝶" in topic and 'data-zaowu-shape="butterfly"' not in raw_payload:
+                seed_error = (
+                    "This is a butterfly, not a bow. Draw two wing pairs, spots, "
+                    'a body, and two antennae, and set data-zaowu-shape="butterfly" '
+                    "on the svg. Keep the large button."
+                )
+            if seed_error:
+                return ToolResult(
+                    content=seed_error,
+                    success=False,
+                    metadata={"maker_stage": SEED, "validation_error": seed_error},
+                )
+
+        ok, data, error = plugin.validate_payload(raw_payload)
         if not ok:
             return ToolResult(
                 content=(

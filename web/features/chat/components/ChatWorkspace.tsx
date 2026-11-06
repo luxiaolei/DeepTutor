@@ -44,6 +44,23 @@ import {
 } from "@/lib/session-load";
 import { PageCustomizeButton } from "@/components/customization/PageCustomizeButton";
 import StarterSuggestions from "@/components/chat/home/StarterSuggestions";
+import MakerOpening, { ParentStartConfirm } from "@/components/chat/home/MakerOpening";
+import { useAuthStatus } from "@/hooks/useAuthStatus";
+import {
+  composerPlaceholder,
+  guidanceDensity,
+  learnerCapabilityAllowed,
+  MAKER_OTHER_CHOICES_PROMPT,
+  makerComposerLine,
+  makerOpening,
+  makerPickAck,
+  makerSpeaks,
+  makerTriedPrompt,
+  makerTriedReaction,
+  spokenMakerPrompt,
+} from "@/lib/zaowu-home";
+import { speakMaker, stopMakerSpeech } from "@/lib/maker-speech";
+import { confirmLearnerSessionStart } from "@/lib/zaowu-api";
 // Imported eagerly so the drawer shell is always mounted off-screen —
 // clicking a chip becomes a single CSS class flip, no chunk fetch + double
 // render. The heavy renderers inside still load lazily.
@@ -281,6 +298,39 @@ export default function ChatWorkspace() {
     isLoading: isCapabilityCatalogLoading,
     error: capabilityCatalogError,
   } = useCapabilityCatalog();
+  const auth = useAuthStatus();
+  const learnerHome = Boolean(auth.learningPolicy);
+  const makerDensity = guidanceDensity(auth.learnerAge, auth.learningPolicy?.ageBand);
+  const [parentConfirmed, setParentConfirmed] = useState(false);
+  const [parentConfirmBusy, setParentConfirmBusy] = useState(false);
+  const needsParentConfirm = Boolean(
+    learnerHome &&
+      auth.sessionStart?.required &&
+      !auth.sessionStart.confirmed &&
+      !parentConfirmed,
+  );
+  const homeCapabilities = useMemo(() => {
+    if (!learnerHome) return visibleCapabilities;
+    return visibleCapabilities
+      .filter((capability) =>
+        learnerCapabilityAllowed(
+          auth.learningPolicy?.allowedCapabilities,
+          capability.value,
+        ),
+      )
+      .map((capability) => ({
+        ...capability,
+        allowedTools: [],
+        defaultTools: [],
+      }));
+  }, [auth.learningPolicy, learnerHome, visibleCapabilities]);
+  useEffect(() => {
+    if (!learnerHome) return;
+    document.documentElement.dataset.zaowuDensity = makerDensity;
+    return () => {
+      delete document.documentElement.dataset.zaowuDensity;
+    };
+  }, [learnerHome, makerDensity]);
   const { setActiveSessionId, language: appLanguage } = useAppShell();
 
   const {
@@ -298,6 +348,7 @@ export default function ChatWorkspace() {
     queueMessage,
     withdrawQueuedMessage,
     cancelStreamingTurn,
+    releaseLearnerTurn,
     submitUserReply,
     regenerateLastMessage,
     resendLastMessage,
@@ -669,6 +720,18 @@ export default function ChatWorkspace() {
     state.isStreaming,
     state.sessionId,
   ]);
+  useEffect(() => {
+    if (!learnerHome || state.isStreaming || !state.activeCapability) return;
+    if (!learnerCapabilityAllowed(auth.learningPolicy?.allowedCapabilities, state.activeCapability)) {
+      setCapability(null);
+    }
+  }, [
+    auth.learningPolicy,
+    learnerHome,
+    setCapability,
+    state.activeCapability,
+    state.isStreaming,
+  ]);
   const isQuizMode = activeCap.value === "deep_question";
   const isVisualizeMode = activeCap.value === "visualize";
   const isResearchMode = activeCap.value === "deep_research";
@@ -781,7 +844,7 @@ export default function ChatWorkspace() {
     setAskHint("");
   }, [state.sessionId]);
   useEffect(() => {
-    if (state.isStreaming || !hasMessages || !state.sessionId) return;
+    if (learnerHome || state.isStreaming || !hasMessages || !state.sessionId) return;
     let cancelled = false;
     void fetchSessionAskHint(state.sessionId).then((hint) => {
       if (!cancelled) setAskHint(hint);
@@ -789,7 +852,7 @@ export default function ChatWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, [state.isStreaming, hasMessages, state.sessionId, state.messages.length]);
+  }, [learnerHome, state.isStreaming, hasMessages, state.sessionId, state.messages.length]);
   // Time-of-day greeting: seeded once on mount from the user's local clock so
   // the heading stays stable while they're on the page. State (not useMemo)
   // because the random pick would otherwise mismatch SSR ↔ client hydration.
@@ -1210,6 +1273,77 @@ export default function ChatWorkspace() {
   // the callback (and so the composer) on every streamed event.
   const awaitingUserReplyRef = useRef(awaitingUserReply);
   awaitingUserReplyRef.current = awaitingUserReply;
+  useEffect(() => {
+    if (!learnerHome || state.isStreaming) return;
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const align = () => {
+      const show = container.querySelector("[data-maker-show]");
+      const rows = container.querySelectorAll("[data-maker-choice-row]");
+      const target = show instanceof HTMLElement ? show : rows[rows.length - 1];
+      if (!(target instanceof HTMLElement)) return;
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      if (show instanceof HTMLElement) {
+        // Keep the sentence and the whole preview — the frame already
+        // includes the button — in the scrollport together. Parking the
+        // sentence just above the composer pushed the toy underneath it.
+        shouldAutoScrollRef.current = false;
+        const topLimit = containerRect.top + 8;
+        const bottomLimit = containerRect.bottom - 8;
+        const room = bottomLimit - topLimit;
+        let delta = 0;
+        if (targetRect.height <= room) {
+          if (targetRect.bottom > bottomLimit) delta = targetRect.bottom - bottomLimit;
+          else if (targetRect.top < topLimit) delta = targetRect.top - topLimit;
+        } else {
+          delta = targetRect.top - topLimit;
+        }
+        if (Math.abs(delta) > 4) container.scrollTop += delta;
+        requestAnimationFrame(() => {
+          shouldAutoScrollRef.current = false;
+        });
+        return;
+      }
+      const clear = 72;
+      const overflow = targetRect.bottom - (containerRect.bottom - clear);
+      if (overflow > 8) container.scrollTop += overflow;
+    };
+    const frame = requestAnimationFrame(align);
+    const show = container.querySelector("[data-maker-show]");
+    const observer =
+      show instanceof HTMLElement && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => align())
+        : null;
+    if (show instanceof HTMLElement) observer?.observe(show);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+    };
+  }, [learnerHome, state.isStreaming, state.messages, messagesContainerRef, shouldAutoScrollRef]);
+  useEffect(() => {
+    if (!learnerHome) return;
+    const onTried = (event: MessageEvent) => {
+      const data = event.data as { type?: string; text?: string } | null;
+      if (!data || data.type !== "dt:maker-tried" || state.isStreaming) return;
+      const label = String(data.text || "");
+      void speakMaker(makerTriedReaction(label));
+      const asked = state.messages.some(
+        (message) => message.role === "assistant" && message.content.includes("还想做另一个"),
+      );
+      if (asked) return;
+      void sendMessage(
+        makerTriedPrompt(label),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { displayUserMessage: false, persistUserMessage: false },
+      );
+    };
+    window.addEventListener("message", onTried);
+    return () => window.removeEventListener("message", onTried);
+  }, [learnerHome, sendMessage, state.isStreaming, state.messages]);
   useEffect(() => {
     if (!awaitingUserCard) return;
     shouldAutoScrollRef.current = true;
@@ -2003,6 +2137,10 @@ export default function ChatWorkspace() {
 
   const handleSend = useCallback(
     async (content: string) => {
+      if (needsParentConfirm) {
+        notify("请家长确认后再开始这一次。", { tone: "error" });
+        return;
+      }
       // An existing session saves its selector before the next turn starts.
       // The composer may be used immediately after changing the dropdown.
       if (!(await waitForReplyLanguageSave(
@@ -2149,7 +2287,15 @@ export default function ChatWorkspace() {
         undefined,
         memoryPayload,
       ];
-      if (state.isStreaming) {
+      if (learnerHome) {
+        // A picture tap during 「看别的」 is the choice. Stop that turn and
+        // wait until the session is free before sending. When nothing is
+        // running this returns immediately. Sending both at once is rejected,
+        // and the swap still finishes as another pair.
+        await releaseLearnerTurn();
+        sendMessage(...send);
+        setRetryingTurn(null);
+      } else if (state.isStreaming) {
         // Sent while a turn runs: it waits its turn. Plain words can steer
         // the running turn at its next step; anything carrying attachments,
         // references or another mode is a turn of its own.
@@ -2218,6 +2364,8 @@ export default function ChatWorkspace() {
       selectedQuestionEntries.length,
       sendMessage,
       queueMessage,
+      releaseLearnerTurn,
+      learnerHome,
       retrying,
       shouldAutoScrollRef,
       state.isStreaming,
@@ -2227,6 +2375,7 @@ export default function ChatWorkspace() {
       selectedPartner,
       submitUserReply,
       t,
+      needsParentConfirm,
       visualizeConfig,
     ],
   );
@@ -2329,8 +2478,25 @@ export default function ChatWorkspace() {
   );
 
   const handleRegenerateMessage = useCallback(() => {
-    regenerateLastMessage();
-  }, [regenerateLastMessage]);
+    if (!learnerHome) {
+      regenerateLastMessage();
+      return;
+    }
+    // A new turn asking for a different pair. Regenerating the same child
+    // sentence deletes the cards first and, while the title model still
+    // holds the session, comes back as 「本轮执行中断了」.
+    if (state.isStreaming) return;
+    stopMakerSpeech();
+    shouldAutoScrollRef.current = true;
+    void sendMessage(
+      MAKER_OTHER_CHOICES_PROMPT,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { displayUserMessage: false, persistUserMessage: false },
+    );
+  }, [learnerHome, regenerateLastMessage, sendMessage, shouldAutoScrollRef, state.isStreaming]);
 
   const handleResendMessage = useCallback(() => {
     resendLastMessage();
@@ -2582,7 +2748,10 @@ export default function ChatWorkspace() {
           >
             {/* 「聊天 / this conversation」 and the conversation's actions go
                 up into the page bar; without one (phones, the classic layout)
-                they stay in this row, which is then all that is left of it. */}
+                they stay in this row, which is then all that is left of it.
+                A learner does not get that row: the 新对话 crumb and the
+                customize / note / activity / conversation icons are adult exits. */}
+            {learnerHome ? null : (
             <div className="dt-chat-head mx-auto flex w-full max-w-[960px] flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-6 pt-3 pb-0">
               <PageBarSlot name="instance" className="group/title min-w-0 flex flex-1 items-center gap-2">
                 {titleInBar ? (
@@ -2671,7 +2840,7 @@ export default function ChatWorkspace() {
                 ) : null}
               </PageBarSlot>
               <PageBarSlot name="actions" className="flex shrink-0 items-center gap-0.5">
-                <PageCustomizeButton page="chat" capabilities={visibleCapabilities} compact />
+                <PageCustomizeButton page="chat" capabilities={homeCapabilities} compact />
                 <HeaderActionButton
                   onClick={() => viewerPanelRef.current?.openMarkdownNoteTab()}
                   icon={NotebookPen}
@@ -2703,6 +2872,7 @@ export default function ChatWorkspace() {
                 />
               </PageBarSlot>
             </div>
+            )}
             <div className="flex w-full flex-1 min-h-0 flex-col">
               {sessionLoading || sessionLoadFailed ? (
                 <div className="flex w-full flex-1 min-h-0 justify-center px-6">
@@ -2715,9 +2885,50 @@ export default function ChatWorkspace() {
                   </div>
                 </div>
               ) : !hasMessages ? (
-                // Clipped rather than pushed under the header when a short
-                // window leaves the greeting no room.
-                <div className="flex w-full flex-1 min-h-0 items-end justify-center overflow-hidden pb-14 animate-fade-in px-6">
+                // The adult greeting stays pinned to the composer. A learner
+                // opening scrolls from the title, so the sentence is not
+                // clipped off the top of the window.
+                <div
+                  className={
+                    learnerHome
+                      ? "min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto px-6 py-6 animate-fade-in"
+                      : "flex w-full flex-1 min-h-0 items-end justify-center overflow-hidden pb-14 animate-fade-in px-6"
+                  }
+                >
+                  {learnerHome ? (
+                    <div className="mx-auto w-full max-w-[960px]">
+                      {needsParentConfirm ? (
+                        <ParentStartConfirm
+                          busy={parentConfirmBusy}
+                          onConfirm={() => {
+                            if (makerSpeaks(makerDensity)) {
+                              const opening = makerOpening(makerDensity);
+                              speakMaker(
+                                spokenMakerPrompt(
+                                  opening.heading,
+                                  opening.choices.map((choice) => choice.label),
+                                ),
+                              );
+                            }
+                            setParentConfirmBusy(true);
+                            void confirmLearnerSessionStart()
+                              .then(() => setParentConfirmed(true))
+                              .catch(() =>
+                                notify("请家长确认后再开始这一次。", { tone: "error" }),
+                              )
+                              .finally(() => setParentConfirmBusy(false));
+                          }}
+                        />
+                      ) : (
+                        <MakerOpening
+                          density={makerDensity}
+                          onPick={(prompt) => {
+                            void handleSend(prompt);
+                          }}
+                        />
+                      )}
+                    </div>
+                  ) : (
                   <div className="w-full max-w-[960px] flex items-center justify-center gap-4">
                     <img
                       src="/brand/black-logo.png"
@@ -2731,6 +2942,7 @@ export default function ChatWorkspace() {
                       {t(welcomeGreeting)}
                     </h1>
                   </div>
+                  )}
                 </div>
               ) : (
                 // Positioned wrapper spanning exactly the scrollport, so the
@@ -2765,7 +2977,10 @@ export default function ChatWorkspace() {
                             const maskImage =
                               "linear-gradient(to bottom, transparent 0px, #000 32px, #000 calc(100% - 40px), transparent 100%)";
                             return {
-                              paddingBottom: "48px",
+                              // Learners get extra room under the latest picture
+                              // pair so a short window does not leave those cards
+                              // in the bottom fade, against the composer.
+                              paddingBottom: learnerHome ? "96px" : "48px",
                               WebkitMaskImage: maskImage,
                               maskImage,
                             };
@@ -2788,6 +3003,19 @@ export default function ChatWorkspace() {
                         onResendLastTurn={handleResendMessage}
                         onRetryTurn={handleRetryTurn}
                         onConfirmOutline={handleConfirmOutline}
+                        onMakerChoice={
+                          learnerHome
+                            ? (choice) => {
+                                if (makerSpeaks(makerDensity)) {
+                                  void speakMaker(makerPickAck(choice));
+                                }
+                                void handleSend(choice);
+                              }
+                            : undefined
+                        }
+                        activityName={learnerHome ? t("Zaowu") : undefined}
+                        makerDensity={learnerHome ? makerDensity : undefined}
+                        learnerChrome={learnerHome}
                         onPreviewAttachment={handlePreviewMessageAttachment}
                         onOpenConsultation={(events) => {
                           const meta = events[0]?.metadata ?? {};
@@ -2842,12 +3070,14 @@ export default function ChatWorkspace() {
                       onDismiss={dismissSelectedPassage}
                     />
                   ) : null}
+                  {learnerHome ? null : (
                   <TurnNavigator
                     entries={chatOutline}
                     scrollRootRef={messagesContainerRef}
                     onJump={jumpToTurn}
                     onJumpToBottom={resumeFollowingLatest}
                   />
+                  )}
                 </div>
               )}
 
@@ -2856,6 +3086,21 @@ export default function ChatWorkspace() {
                  rendered as an assistant reply — with the message's text kept
                  above, marked unsent, and retryable. */}
               {state.submissionFailed ? (
+                learnerHome ? (
+                <div
+                  role="status"
+                  className="mx-auto flex w-full max-w-[960px] items-center gap-3 px-6 pb-1 text-sm text-[var(--foreground)]"
+                >
+                  <span>{"这次没做成。再点一次。"}</span>
+                  <button
+                    type="button"
+                    onClick={handleResendMessage}
+                    className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2"
+                  >
+                    {"再试一次"}
+                  </button>
+                </div>
+                ) : (
                 <div
                   role="alert"
                   data-submission-error="true"
@@ -2884,8 +3129,10 @@ export default function ChatWorkspace() {
                     ) : null}
                   </div>
                 </div>
+                )
               ) : null}
               <ChatComposer
+                learnerChrome={learnerHome}
                 customizable
                 composerRef={composerRef}
                 capMenuRef={capMenuRef}
@@ -2938,7 +3185,7 @@ export default function ChatWorkspace() {
                 capabilityNeedsConfig={capabilityNeedsConfig}
                 capabilityConfigConfirmed={capabilityConfigConfirmed}
                 onRequestConfigConfirm={ensureActivityPanelOpen}
-                capabilities={visibleCapabilities}
+                capabilities={homeCapabilities}
                 onSetCapMenuOpen={setCapMenuOpen}
                 onSetSpaceMenuOpen={setSpaceMenuOpen}
                 onToggleKB={handleToggleKB}
@@ -2957,6 +3204,7 @@ export default function ChatWorkspace() {
                 onSelectMemoryPicker={handleSelectMemoryPicker}
                 onClearPersona={handleClearPersona}
                 personaSelection={state.personaSelection}
+                lockedPersona={learnerHome ? auth.learningPolicy?.lockedPersona : undefined}
                 onPersonaSelectionChange={setPersonaSelection}
                 personaSelectorOpen={personaSelectorOpen}
                 onPersonaSelectorOpenChange={setPersonaSelectorOpen}
@@ -2993,7 +3241,7 @@ export default function ChatWorkspace() {
                 onCancelStreaming={cancelStreamingTurn}
                 prefillInputRef={prefillInputRef}
                 focusInputRef={focusComposerRef}
-                queueWhileStreaming
+                queueWhileStreaming={!learnerHome}
                 inputHeader={
                   retrying ? (
                     <div className="flex items-center gap-2 px-4 pt-3 text-[12.5px]">
@@ -3021,20 +3269,31 @@ export default function ChatWorkspace() {
                   ) : undefined
                 }
                 inputFooter={
+                  learnerHome ? null : (
                   <QueuedMessages
                     messages={state.queuedMessages}
                     isStreaming={state.isStreaming}
                     onWithdraw={withdrawQueuedMessage}
                   />
+                  )
                 }
-                inputPlaceholder={askHint || undefined}
-                inputPlaceholderCompletion={askHint}
+                inputPlaceholder={composerPlaceholder({
+                  learner: learnerHome,
+                  hint: learnerHome ? undefined : askHint,
+                  maker: makerComposerLine({
+                    messages: state.messages,
+                    streaming: state.isStreaming,
+                    choosing: t("What shall we make?"),
+                  }),
+                  adult: "",
+                }) || undefined}
+                inputPlaceholderCompletion={learnerHome ? undefined : askHint}
               />
               {/* Starters sit between the composer and the spacer, so they ride
                 up with the composer on the empty screen and disappear the
                 moment the conversation has a first message. Picking one only
                 writes it into the composer: sending stays the learner's. */}
-              {!hasMessages ? (
+              {!hasMessages && !learnerHome ? (
                 <StarterSuggestions
                   workspaceId={state.workspaceId || ""}
                   onPick={handlePrefillComposer}
@@ -3045,7 +3304,7 @@ export default function ChatWorkspace() {
                 aria-hidden="true"
                 className="shrink-0"
                 style={{
-                  flexGrow: hasMessages ? 0 : 1.4,
+                  flexGrow: hasMessages || learnerHome ? 0 : 1.4,
                   transition: "flex-grow 650ms cubic-bezier(0.16, 1, 0.3, 1)",
                 }}
               />

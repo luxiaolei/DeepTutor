@@ -28,6 +28,7 @@ from deeptutor.services.persona import (
     PersonaService,
     get_persona_service,
 )
+from deeptutor.services.persona.service import PRESETS_DIR
 
 router = APIRouter()
 
@@ -65,21 +66,27 @@ def _persona_presets(service: PersonaService) -> PersonaService | None:
     return presets
 
 
-@router.get("/personas")
-async def list_personas() -> dict[str, list[dict[str, object]]]:
-    service = get_persona_service()
-    own = [info.to_dict() for info in service.list_personas()]
-    presets = _persona_presets(service)
-    if presets is None:
-        return {"personas": own}
-    own_names = {item["name"] for item in own}
-    merged = list(own)
-    for preset in presets.list_personas():
-        if preset.name in own_names:
+def _merge_preset(merged: list[dict[str, object]], preset_rows: list) -> None:
+    names = {item["name"] for item in merged}
+    for preset in preset_rows:
+        if preset.name in names:
             continue
         entry = preset.to_dict()
         entry.update({"source": "admin", "read_only": True})
         merged.append(entry)
+        names.add(preset.name)
+
+
+@router.get("/personas")
+async def list_personas() -> dict[str, list[dict[str, object]]]:
+    service = get_persona_service()
+    merged = [info.to_dict() for info in service.list_personas()]
+    presets = _persona_presets(service)
+    if presets is not None:
+        _merge_preset(merged, presets.list_personas())
+    # Package presets (造物 included) show up even before startup copies them
+    # into the admin workspace, so the style picker is not an empty English id.
+    _merge_preset(merged, PersonaService(root=PRESETS_DIR).list_personas())
     return {"personas": merged}
 
 
@@ -101,6 +108,12 @@ async def get_persona(name: str) -> dict[str, object]:
             return detail
         except (PersonaNotFoundError, InvalidPersonaNameError):
             pass
+    try:
+        detail = PersonaService(root=PRESETS_DIR).get_detail(name).to_dict()
+        detail.update({"source": "admin", "read_only": True})
+        return detail
+    except (PersonaNotFoundError, InvalidPersonaNameError):
+        pass
     raise HTTPException(status_code=404, detail=t("api.persona_not_found", name=name))
 
 

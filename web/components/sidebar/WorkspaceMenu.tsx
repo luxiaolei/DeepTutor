@@ -10,6 +10,8 @@ import Tooltip from '@/shared/ui/Tooltip'
 import { useWorkspaceChoices } from '@/components/workspaces/useWorkspaceChoices'
 import { VersionBadge } from '@/components/sidebar/VersionBadge'
 import { clientEditionLabel } from '@/lib/version'
+import { useAuthStatus } from '@/hooks/useAuthStatus'
+import { learnerSidebarLabel } from '@/lib/zaowu-home'
 
 const GLYPH_TINTS = ['#e3655b', '#d9822b', '#c9a227', '#4f9d69', '#3d8fb8', '#6c6fd1', '#a35fc0', '#c25b8a']
 
@@ -82,6 +84,8 @@ export function WorkspaceMenu({
 }) {
   const { t } = useTranslation()
   const { active, currentName } = useWorkspaceChoices()
+  const learnerHome = Boolean(useAuthStatus().learningPolicy)
+  const headerLabel = learnerSidebarLabel(learnerHome, currentName, t('Zaowu'))
   const [open, setOpen] = useState(false)
   const rootRef = useMenuPopover<HTMLDivElement>(open, setOpen)
   const menuId = useId()
@@ -89,20 +93,30 @@ export function WorkspaceMenu({
     setOpen(false)
     onNavigate?.()
   }
+  if (learnerHome) {
+    return (
+      <div className={`dt-workspace-menu ${compact ? 'is-rail' : ''}`}>
+        <div className="flex min-w-0 items-center gap-2 px-2 text-[13.5px] font-semibold text-[var(--foreground)]">
+          <WorkspaceGlyph name={headerLabel} general size={22} />
+          {compact ? null : <span className="min-w-0 flex-1 truncate text-left">{headerLabel}</span>}
+        </div>
+      </div>
+    )
+  }
   return (
     <div ref={rootRef} className={`dt-workspace-menu ${compact ? 'is-rail' : ''}`}>
       {compact ? (
-        <Tooltip label={currentName} description={t('Manage workspaces')} side="right" suppressed={open}>
+        <Tooltip label={headerLabel} description={t('Manage workspaces')} side="right" suppressed={open}>
           <button
             type="button"
             aria-haspopup="menu"
             aria-expanded={open}
             aria-controls={menuId}
-            aria-label={currentName}
+            aria-label={headerLabel}
             onClick={() => setOpen(value => !value)}
             className="dt-workspace-trigger"
           >
-            <WorkspaceGlyph name={currentName} general={!active} />
+            <WorkspaceGlyph name={headerLabel} general={!active} />
           </button>
         </Tooltip>
       ) : (
@@ -114,8 +128,8 @@ export function WorkspaceMenu({
           onClick={() => setOpen(value => !value)}
           className="dt-workspace-trigger"
         >
-          <WorkspaceGlyph name={currentName} general={!active} />
-          <span className="min-w-0 flex-1 truncate text-left">{currentName}</span>
+          <WorkspaceGlyph name={headerLabel} general={!active} />
+          <span className="min-w-0 flex-1 truncate text-left">{headerLabel}</span>
           <ChevronDown size={14} strokeWidth={1.8} className="shrink-0 opacity-60" />
         </button>
       )}

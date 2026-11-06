@@ -19,9 +19,9 @@ export type GrantPayload = {
 
 export type LearningPolicy = {
   age_band: "6-8" | "9-12" | "13-15";
-  locked_persona: "teacher";
-  allowed_capabilities: Array<"chat" | "immersive_reading">;
-  default_capability: "chat" | "immersive_reading";
+  locked_persona: "teacher" | "zaowu";
+  allowed_capabilities: Array<"chat" | "immersive_reading" | "visualize">;
+  default_capability: "chat" | "immersive_reading" | "visualize";
   allowed_surfaces: Array<"chat" | "reading">;
   reading: {
     allow_upload: boolean;

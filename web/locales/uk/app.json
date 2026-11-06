@@ -6428,5 +6428,11 @@
   "Availability refreshed. This parser is still unavailable; check the installation and startup logs, then retry.": "Доступність оновлено. Цей парсер досі недоступний; перевірте встановлення та журнали запуску й повторіть спробу.",
   "language.portuguese": "Португальська",
   "language.japanese": "Японська",
-  "language.turkish": "Türkçe"
+  "language.turkish": "Türkçe",
+  "Zaowu": "Zaowu",
+  "Chat · Visualize · Immersive Reading": "Chat · Visualize · Immersive Reading",
+  "Confirm this session": "Confirm this session",
+  "What shall we make?": "What shall we make? Pick one, or say it.",
+  "We are thinking together…": "Подумаймо разом…",
+  "We thought of it": "Готово"
 }

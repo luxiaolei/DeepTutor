@@ -167,6 +167,17 @@ const BRIDGE_SCRIPT =
     document.addEventListener("DOMContentLoaded", startHeightObservers, { once: true });
   }
   window.addEventListener("load", scheduleHeightReport);
+  document.addEventListener("click", function (event) {
+    var node = event.target;
+    var button = node && node.closest ? node.closest("button") : null;
+    if (!button) return;
+    try {
+      parent.postMessage({
+        type: "dt:maker-tried",
+        text: String(button.innerText || button.getAttribute("aria-label") || "").replace(/\\s+/g, "").trim()
+      }, "*");
+    } catch (error) {}
+  }, true);
 })();
 <` + "/script>";
 
@@ -184,6 +195,39 @@ function injectBridge(html: string): string {
  * Convenience: inject KaTeX, sanitize, then add the host bridge. Suitable for a
  * one-shot iframe `srcdoc` write.
  */
+/**
+ * A learner preview: a large control a six-year-old can tap, and a scene
+ * short enough that the sentence above the toy stays on a 640px window.
+ */
+export function learnerPreviewHtml(html: string): string {
+  const style =
+    "<style data-zaowu-control>" +
+    "html,body{height:auto!important;min-height:0!important;overflow:hidden!important;}" +
+    "button{box-sizing:border-box!important;position:static!important;inset:auto!important;" +
+    "left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;" +
+    "float:none!important;transform:none!important;" +
+    "width:200px!important;min-width:200px!important;max-width:200px!important;" +
+    "height:88px!important;min-height:88px!important;max-height:88px!important;" +
+    "font-size:28px!important;padding:0 16px!important;border-radius:999px!important;" +
+    "margin:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;}" +
+    "[data-zaowu-action]{display:flex!important;justify-content:center!important;width:100%!important;" +
+    "margin:12px 0 0!important;position:relative!important;clear:both!important;background:transparent!important;}" +
+    "</style>" +
+    "<script data-zaowu-control>(function(){" +
+    "function place(button){" +
+    "if(!button||button.closest('[data-zaowu-action]'))return;" +
+    "var bar=document.createElement('div');" +
+    "bar.setAttribute('data-zaowu-action','true');" +
+    "document.body.appendChild(bar);" +
+    "bar.appendChild(button);" +
+    "}" +
+    "var button=document.querySelector('button');" +
+    "if(button) place(button);" +
+    "})();</script>";
+  if (html.includes("</body>")) return html.replace("</body>", style + "</body>");
+  return html + style;
+}
+
 export function prepareIframeHtml(html: string): string {
   return injectBridge(sanitizeIframeHtml(injectKaTeX(html)));
 }

@@ -103,4 +103,28 @@ describe("chat activity status", () => {
     );
     expect(screen.getByRole("status")).toHaveTextContent("DeepTutor Exploring");
   });
+
+  it("names a learner session without DeepTutor", () => {
+    const events = [
+      {
+        type: "content",
+        stage: "responding",
+        content: "Partial answer",
+        timestamp: Date.now() / 1000,
+      },
+    ] as StreamEvent[];
+
+    render(
+      <StreamingStatus
+        events={events}
+        isStreaming
+        content="Partial answer"
+        agentName="造物"
+      />,
+    );
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("造物 Exploring");
+    expect(status).not.toHaveTextContent("DeepTutor");
+  });
 });

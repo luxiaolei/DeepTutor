@@ -12,6 +12,21 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { MakerChoiceRow, MakerPicture, MakerPreviewNote } from "@/components/chat/home/MakerChoices";
+import {
+  learnerStyleLabel,
+  MAKER_CHOICE_INVITATION,
+  makerChoiceLines,
+  makerInvitesChoice,
+  makerPickStarted,
+  makerPreviewWords,
+  makerShowsPictures,
+  makerSpeaks,
+  withMakerChoiceInvitation,
+  withoutInProgressChoiceLines,
+  withoutMakerChoiceLines,
+  type ZaowuDensity,
+} from "@/lib/zaowu-home";
 import {
   BookMarked,
   BookOpen,
@@ -292,6 +307,7 @@ const ProcessBody = memo(
     isStreaming,
     readingMaterialId,
     readingMaterialRevision,
+    learner = false,
   }: {
     segments: MessageSegment[];
     events: StreamEvent[];
@@ -301,6 +317,8 @@ const ProcessBody = memo(
     isStreaming?: boolean;
     readingMaterialId?: string;
     readingMaterialRevision?: number;
+    /** Drop raw skill slugs such as zaowu from tool rows. */
+    learner?: boolean;
   }) {
     return (
       <div
@@ -327,7 +345,7 @@ const ProcessBody = memo(
               className="[&>div]:mb-0"
               style={{ marginLeft: -ROW_GUTTER }}
             >
-              <TraceFlow events={seg.events} isStreaming={isStreaming} />
+              <TraceFlow events={seg.events} isStreaming={isStreaming} learner={learner} />
             </div>
           ) : seg.kind === "ask_user" && seg.data.resolved ? (
             <AskUserOptions
@@ -740,6 +758,11 @@ export const AssistantMessage = memo(function AssistantMessage({
   onAnswerMasteryQuestion,
   onSkipMasteryQuestion,
   onChallengeMasteryQuestion,
+  onMakerChoice,
+  activityName,
+  makerDensity = "older",
+  learnerChrome = false,
+  choicesLocked = false,
   researchRequestSnapshot,
   onTraceToggle,
   masteryGrades,
@@ -811,6 +834,17 @@ export const AssistantMessage = memo(function AssistantMessage({
     questionId: string,
   ) => void | boolean | Promise<void | boolean>;
   onChallengeMasteryQuestion?: (questionId: string) => void | boolean | Promise<void | boolean>;
+  /** Send one bounded maker choice as the next turn. */
+  onMakerChoice?: (choice: string) => void;
+  /** Name in the activity row. A learner session passes 造物 so the row
+   *  does not fall back to DeepTutor. */
+  activityName?: string;
+  /** How picture-heavy the choice buttons are. Youngest is spoken too. */
+  makerDensity?: ZaowuDensity;
+  /** Learner chrome: no raw skill ids, no token meter. */
+  learnerChrome?: boolean;
+  /** Pictures of earlier choices stay, but do not start another make. */
+  choicesLocked?: boolean;
 }) {
   const { t } = useTranslation();
   const events = useMemo(() => msg.events ?? [], [msg.events]);
@@ -864,9 +898,17 @@ export const AssistantMessage = memo(function AssistantMessage({
   }, [msg.capability, resultEvent]);
 
   const visualizeResult = useMemo(() => {
-    if (msg.capability !== "visualize" || !resultEvent) return null;
-    return extractVisualizeResult(resultEvent.metadata);
-  }, [msg.capability, resultEvent]);
+    // A maker seed is produced by visualize even when the composer sent chat.
+    // The result event is what puts the canvas on screen.
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index];
+      if (event.type !== "result") continue;
+      if (event.source !== "visualize" && msg.capability !== "visualize") continue;
+      const result = extractVisualizeResult(event.metadata);
+      if (result) return result;
+    }
+    return null;
+  }, [events, msg.capability]);
 
   const videoLessonResult = useMemo(() => {
     // A one-turn capability or a resumed turn may still have the composer's
@@ -977,6 +1019,23 @@ export const AssistantMessage = memo(function AssistantMessage({
   );
 
   const body = msg.content;
+  const makerChoices =
+    onMakerChoice && !isStreaming && !visualizeResult && !askUserPayload
+      ? makerChoiceLines(body)
+      : [];
+  const hideStreamingChoices =
+    learnerChrome && makerShowsPictures(makerDensity) && isStreaming;
+  const answerText = (text: string) => {
+    const stripped = makerChoices.length > 0 ? withoutMakerChoiceLines(text, makerChoices) : text;
+    return hideStreamingChoices ? withoutInProgressChoiceLines(stripped) : stripped;
+  };
+  // Ages who see picture cards must be asked to tap one. The model often
+  // stops after a compliment; the invitation is then inserted for the screen
+  // and for read-aloud, instead of waiting for another generation.
+  const prose = answerText(body);
+  const invitePictureChoice =
+    makerChoices.length > 0 && learnerChrome && makerShowsPictures(makerDensity);
+  const choiceProse = invitePictureChoice ? withMakerChoiceInvitation(prose) : prose;
 
   // Interleaved segments for the default chat surface: the message is laid
   // out in the order it was written — what DeepTutor said it was about to do,
@@ -1097,6 +1156,7 @@ export const AssistantMessage = memo(function AssistantMessage({
         isStreaming={isStreaming}
         readingMaterialId={readingMaterialId}
         readingMaterialRevision={readingMaterialRevision}
+        learner={learnerChrome}
       />
     ),
     [
@@ -1106,6 +1166,7 @@ export const AssistantMessage = memo(function AssistantMessage({
       readingMaterialRevision,
       events,
       processSettled,
+      learnerChrome,
     ],
   );
   const headerProcessSummary = useMemo(() => {
@@ -1134,6 +1195,8 @@ export const AssistantMessage = memo(function AssistantMessage({
           still working, collapsed once it settles into the final answer. */}
       <AssistantActivity
         events={events}
+        agentName={activityName}
+        learner={learnerChrome}
         answerer={answerer}
         traceEvents={headerTraceEvents}
         isStreaming={isStreaming}
@@ -1209,7 +1272,25 @@ export const AssistantMessage = memo(function AssistantMessage({
       ) : mathAnimatorResult ? (
         <MathAnimatorViewer result={mathAnimatorResult} />
       ) : visualizeResult ? (
-        <VisualizationViewer result={visualizeResult} />
+        <>
+          <div data-maker-show={learnerChrome ? "true" : undefined}>
+          {learnerChrome ? (
+            <div data-maker-note="true">
+            <MakerPreviewNote
+              text={makerPreviewWords(
+                answerText(body),
+                String((visualizeResult as { code?: { content?: string } }).code?.content ?? ""),
+                String((visualizeResult as { presentation?: { title?: string } }).presentation?.title ?? ""),
+              )}
+              speak={makerSpeaks(makerDensity)}
+            />
+            </div>
+          ) : null}
+          <div data-maker-preview={learnerChrome ? "true" : undefined}>
+            <VisualizationViewer result={visualizeResult} quiet={learnerChrome} />
+          </div>
+          </div>
+        </>
       ) : videoLessonResult ? (
         <>
           <VideoLessonViewer result={videoLessonResult} />
@@ -1282,10 +1363,10 @@ export const AssistantMessage = memo(function AssistantMessage({
             ) : block.segment.kind === "user_input" ? (
               <SentMidTurn key={block.key} messages={block.segment.messages} />
             ) : null
-          ) : block.segment.kind === "text" ? (
+          ) : block.segment.kind === "text" && answerText(block.segment.text).trim() ? (
             <AssistantResponse
               key={block.key}
-              content={block.segment.text}
+              content={answerText(block.segment.text)}
               language={language}
               isStreaming={isStreaming}
               readingMaterialId={readingMaterialId}
@@ -1294,16 +1375,16 @@ export const AssistantMessage = memo(function AssistantMessage({
             />
           ) : null,
         )
-      ) : (
+      ) : choiceProse.trim() ? (
         <AssistantResponse
-          content={body}
+          content={choiceProse}
           language={language}
           isStreaming={isStreaming}
           readingMaterialId={readingMaterialId}
           readingMaterialRevision={readingMaterialRevision}
           events={events}
         />
-      )}
+      ) : null}
       {events.some(event => event.type === "sources" &&
         Array.isArray(event.metadata.sources) && event.metadata.sources.some(source =>
           source && typeof source === "object" &&
@@ -1321,6 +1402,24 @@ export const AssistantMessage = memo(function AssistantMessage({
       !latestMasteryQuestion &&
       askUserPayload ? (
         <AskUserOptions data={askUserPayload} onSubmit={submitReply} />
+      ) : null}
+      {invitePictureChoice && useSegmentLayout && !makerInvitesChoice(prose) ? (
+        <AssistantResponse
+          content={MAKER_CHOICE_INVITATION}
+          language={language}
+          isStreaming={false}
+          readingMaterialId={readingMaterialId}
+          readingMaterialRevision={readingMaterialRevision}
+          events={events}
+        />
+      ) : null}
+      {makerChoices.length > 0 && !choicesLocked ? (
+        <MakerChoiceRow
+          density={makerDensity}
+          heading={choiceProse}
+          choices={makerChoices}
+          onPick={(choice) => onMakerChoice?.(choice)}
+        />
       ) : null}
       {/* Credential hand-off sits below whichever body branch rendered: it
           supplements the answer ("here's where to paste the key") rather than
@@ -1720,6 +1819,7 @@ export const UserMessage = memo(function UserMessage({
   availableKbNames,
   kbDisplayNames,
   showModeBadge,
+  learnerChrome = false,
   onOpenConsultation,
 }: {
   msg: ChatMessageItem;
@@ -1740,6 +1840,8 @@ export const UserMessage = memo(function UserMessage({
   /** Label the bubble with its capability. A single-capability surface
    *  already names the mode in its own chrome. */
   showModeBadge?: boolean;
+  /** Hide adult reference chips such as the persona tag. */
+  learnerChrome?: boolean;
   onOpenConsultation?: () => void;
 }) {
   const { t } = useTranslation();
@@ -1914,13 +2016,17 @@ export const UserMessage = memo(function UserMessage({
           } satisfies ContextTreeItem,
         ]
       : []),
-    ...(snap?.persona
+    ...(snap?.persona && !learnerChrome
       ? [
           {
             key: "persona",
             icon: UserRound,
             kind: t("Persona"),
-            label: snap.persona,
+            label: learnerStyleLabel({
+              selected: snap.persona,
+              defaultLabel: snap.persona,
+              zaowuLabel: t("Zaowu"),
+            }),
           } satisfies ContextTreeItem,
         ]
       : []),
@@ -2032,7 +2138,7 @@ export const UserMessage = memo(function UserMessage({
         )}
         {/* Recovery records are local to this browser. Keep their actions
             visible so an old pending submission can be resolved in place. */}
-        {!editing && msg.failedSubmission ? (
+        {!editing && msg.failedSubmission && !learnerChrome ? (
           <div
             data-unsent="true"
             className="flex items-center gap-1 pr-1 text-[11px] font-medium text-[var(--destructive)]"
@@ -2152,6 +2258,10 @@ export const ChatMessageList = memo(function ChatMessageList({
   onAnswerMasteryQuestion,
   onSkipMasteryQuestion,
   onChallengeMasteryQuestion,
+  onMakerChoice,
+  activityName,
+  makerDensity = "older",
+  learnerChrome = false,
   showModeBadge = true,
   onLoadMessageTrace,
   onReleaseMessageTrace,
@@ -2220,6 +2330,14 @@ export const ChatMessageList = memo(function ChatMessageList({
     questionId: string,
   ) => void | boolean | Promise<void | boolean>;
   onChallengeMasteryQuestion?: (questionId: string) => void | boolean | Promise<void | boolean>;
+  /** Learner maker choices in the latest reply send the next turn. */
+  onMakerChoice?: (choice: string) => void;
+  /** Shown in the in-progress activity row instead of DeepTutor. */
+  activityName?: string;
+  /** Picture and speech density for maker choice buttons. */
+  makerDensity?: ZaowuDensity;
+  /** Hide adult meters and raw skill ids. */
+  learnerChrome?: boolean;
   /** Names of KBs confirmed to exist. Omitted when the KB list is unavailable. */
   availableKbNames?: Set<string>;
   /** Qualified KB ref -> display name, from the same catalog the composer
@@ -2422,6 +2540,13 @@ export const ChatMessageList = memo(function ChatMessageList({
     return new Map(messageRows.map((row, index) => [row.originalIndex, totals[index]]));
   }, [messageRows]);
 
+  const pickIndex = messages.findIndex(
+    (message) => message.role === "user" && makerPickStarted(message.content),
+  );
+  let lastPickIndex = -1;
+  messages.forEach((message, index) => {
+    if (message.role === "user" && makerPickStarted(message.content)) lastPickIndex = index;
+  });
   const lastRenderedAssistantIndex = useMemo(() => {
     for (let idx = messageRows.length - 1; idx >= 0; idx -= 1) {
       if (messageRows[idx].msg.role === "assistant")
@@ -2478,8 +2603,8 @@ export const ChatMessageList = memo(function ChatMessageList({
                 msg={msg}
                 index={i}
                 onPreviewAttachment={onPreviewAttachment}
-                onCopy={onCopyAssistantMessage}
-                onEdit={onEditMessage}
+                onCopy={learnerChrome ? undefined : onCopyAssistantMessage}
+                onEdit={learnerChrome ? undefined : onEditMessage}
                 onDiscardFailedSubmission={onDiscardFailedSubmission}
                 onRetryFailedSubmission={onRetryFailedSubmission}
                 editDisabled={isStreaming}
@@ -2487,12 +2612,13 @@ export const ChatMessageList = memo(function ChatMessageList({
                 onSwitchBranch={onSwitchBranch}
                 availableKbNames={availableKbNames}
                 kbDisplayNames={kbDisplayNames}
-                showModeBadge={showModeBadge}
+                showModeBadge={showModeBadge && !learnerChrome}
+                learnerChrome={learnerChrome}
                 onOpenConsultation={consultationEvents.length && onOpenConsultation
                   ? () => onOpenConsultation(consultationEvents)
                   : undefined}
               />
-              {orphanedFailure ? (
+              {!learnerChrome && orphanedFailure ? (
                 <div
                   role="alert"
                   data-orphaned-failed-turn={orphanedFailure.turn_id}
@@ -2580,6 +2706,20 @@ export const ChatMessageList = memo(function ChatMessageList({
         const showDelete = deletableTurnUserId != null;
 
         const costSummary = msgDone ? messageUsage(msg.events) : null;
+        const earlierChoiceCards = messageRows.slice(0, rowIndex).some(
+          (row) => row.msg.role === "assistant" && makerChoiceLines(row.msg.content).length > 0,
+        );
+        // A failed 「看别的」 must not leave an empty reply under the cards
+        // the child can still tap.
+        if (
+          learnerChrome &&
+          earlierChoiceCards &&
+          msgDone &&
+          !hasVisibleMarkdownContent(msg.content) &&
+          (terminalError || emptyResponse)
+        ) {
+          return null;
+        }
 
         return (
           <div
@@ -2604,6 +2744,13 @@ export const ChatMessageList = memo(function ChatMessageList({
                 onAnswerMasteryQuestion={onAnswerMasteryQuestion}
                 onSkipMasteryQuestion={onSkipMasteryQuestion}
                 onChallengeMasteryQuestion={onChallengeMasteryQuestion}
+                onMakerChoice={
+                  onMakerChoice && !isActiveAssistant ? onMakerChoice : undefined
+                }
+                activityName={activityName}
+                makerDensity={makerDensity}
+                learnerChrome={learnerChrome}
+                choicesLocked={lastPickIndex >= 0 && i < lastPickIndex}
                 researchRequestSnapshot={
                   pairedUserMessage?.requestSnapshot ?? null
                 }
@@ -2623,6 +2770,30 @@ export const ChatMessageList = memo(function ChatMessageList({
               // A turn that died (LLM/provider failure, interruption) ends
               // with a turn_terminal error event. Surface it as an error
               // card with an inline retry instead of leaving a bare trace.
+              // A learner keeps the picture cards they already have. The
+              // adult 「本轮执行中断了」 card is not a next tap.
+              if (learnerChrome) {
+                // A failed opening has nothing to tap. Adult network copy and a
+                // blank 「想好了」 are not a next step. Cards already on screen
+                // stay the next tap, so this stays quiet once a pair exists.
+                if (earlierChoiceCards || isActiveAssistant || (!terminalError && !emptyResponse)) {
+                  return null;
+                }
+                return (
+                  <div role="status" className="mt-3 flex items-center gap-3 text-sm text-[var(--foreground)]">
+                    <span>{"这次没做成。再点一次。"}</span>
+                    {showResend || showRegenerate ? (
+                      <button
+                        type="button"
+                        onClick={() => (showResend ? onResendLastTurn?.() : onRegenerateMessage())}
+                        className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2"
+                      >
+                        {"再试一次"}
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              }
               if (isActiveAssistant) return null;
               if (stopped) return (
                 <div role="status" className="mt-3 flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
@@ -2660,7 +2831,17 @@ export const ChatMessageList = memo(function ChatMessageList({
                 </div>
               );
             })()}
-            {(showActions || costSummary || showDelete) && (
+            {learnerChrome && pickIndex < 0 && !isStreaming && makerChoiceLines(msg.content).length > 0 && !messageRows.slice(rowIndex + 1).some((row) => row.msg.role === "assistant" && makerChoiceLines(row.msg.content).length > 0) ? (
+              <button
+                type="button"
+                onClick={() => onRegenerateMessage()}
+                className="mt-3 inline-flex min-h-12 items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 text-base text-[var(--foreground)]"
+              >
+                <MakerPicture name="swap" />
+                <span>{"看别的"}</span>
+              </button>
+            ) : null}
+            {!learnerChrome && (showActions || costSummary || showDelete) && (
               <div className="mt-3 flex items-center">
                 {(showActions || showDelete) && (
                   <div className="flex shrink-0 items-center gap-1">
@@ -2711,7 +2892,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                     {showActions && assistantActions?.(msg)}
                   </div>
                 )}
-                {costSummary && !compactActions && (
+                {costSummary && !compactActions && !learnerChrome && (
                   // The room left beside the actions is what the usage pill
                   // measures itself against (see UsageFooter).
                   <div className="flex min-w-0 flex-1 justify-end pl-2 [container-type:inline-size]">

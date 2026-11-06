@@ -267,6 +267,8 @@ export default memo(function ChatComposer({
   onSelectPersonaPicker,
   onSelectMemoryPicker,
   onClearPersona,
+  lockedPersona,
+  learnerChrome = false,
   personaSelection,
   onPersonaSelectionChange,
   personaSelectorOpen,
@@ -414,6 +416,10 @@ export default memo(function ChatComposer({
    */
   personaSelection?: string;
   onPersonaSelectionChange?: (persona: string) => void;
+  /** Learner grant lock. The style chip shows this name instead of Default. */
+  lockedPersona?: string;
+  /** Hide the model id, context meter, and other adult resource readouts. */
+  learnerChrome?: boolean;
   personaSelectorOpen?: boolean;
   onPersonaSelectorOpenChange?: (open: boolean) => void;
   /** Main chat's session-level reply language, selected via /language. */
@@ -1123,7 +1129,11 @@ export default memo(function ChatComposer({
     onPersonaSelectionChange || onAnswerByChange
       ? {
           persona: onPersonaSelectionChange
-            ? { value: personaSelection ?? "", onChange: onPersonaSelectionChange }
+            ? {
+                value: personaSelection ?? "",
+                onChange: onPersonaSelectionChange,
+                locked: lockedPersona,
+              }
             : undefined,
           answerers: onAnswerByChange
             ? {
@@ -1191,11 +1201,11 @@ export default memo(function ChatComposer({
   // while the turn is waiting on the user, where sending IS how it continues.
   const handleSendButtonClick = useCallback(() => {
     if (streamingBlocksSend) {
-      onCancelStreaming();
+      if (!learnerChrome) onCancelStreaming();
       return;
     }
     handleManualSend();
-  }, [handleManualSend, streamingBlocksSend, onCancelStreaming]);
+  }, [handleManualSend, learnerChrome, streamingBlocksSend, onCancelStreaming]);
 
   const sendLabel =
     sendState === "streaming"
@@ -1387,7 +1397,7 @@ export default memo(function ChatComposer({
           <div className="px-3 pb-2 pt-0.5">
             <div className={styles.toolbar}>
               <div className={styles.context}>
-                {
+                {!learnerChrome && (
                   <ComposerResources
                     selectedCount={contextTreeItems.length}
                     items={resourceItems}
@@ -1422,9 +1432,9 @@ export default memo(function ChatComposer({
                       />
                     )}
                   />
-                }
+                )}
 
-                {showCapabilityChip && !modeInTray && (
+                {showCapabilityChip && !modeInTray && !learnerChrome && (
                   <div className="relative min-w-0 max-w-full">
                     <Tooltip label={capabilityLabel(activeCap)} suppressed={capMenuOpen} side="top">
                       <button
@@ -1552,6 +1562,7 @@ export default memo(function ChatComposer({
               </div>
 
               <div className={styles.actions}>
+                {learnerChrome ? null : (
                 <ModelSelector
                   options={llmOptions}
                   activeDefault={activeLLMDefault}
@@ -1561,10 +1572,12 @@ export default memo(function ChatComposer({
                   onChange={onSelectLLM}
                   onRefresh={onRefreshLLMOptions}
                 />
+                )}
 
-                {contextBudget ? <ContextBudgetChip budget={contextBudget} /> : null}
+                {!learnerChrome && contextBudget ? <ContextBudgetChip budget={contextBudget} /> : null}
 
-                {(controls?.voice !== false || recorder.state !== "idle") && <Tooltip
+                {!learnerChrome && (controls?.voice !== false || recorder.state !== "idle") ? (
+                <Tooltip
                   label={recorder.state === "recording" ? t("Stop recording") : t("Record voice")}
                   description={recorder.error || undefined}
                   side="top"
@@ -1593,7 +1606,8 @@ export default memo(function ChatComposer({
                       <Mic size={16} strokeWidth={1.9} />
                     )}
                   </button>
-                </Tooltip>}
+                </Tooltip>
+                ) : null}
 
                 {/* The thing you press is the thing that's working is the
                     thing you press to stop — one element for the whole turn,
@@ -1602,7 +1616,7 @@ export default memo(function ChatComposer({
                     place (both stacked in the same grid cell) and the progress
                     ring moves to the perimeter, where it can spin without
                     fighting the square for the same space. */}
-                {queuing && hasIntent ? (
+                {queuing && hasIntent && !learnerChrome ? (
                   <Tooltip label={t("Stop generating")} side="top">
                     <button
                       type="button"
@@ -1615,7 +1629,8 @@ export default memo(function ChatComposer({
                     </button>
                   </Tooltip>
                 ) : null}
-                <Tooltip label={sendTitle} side="top">
+                {learnerChrome && sendState === "streaming" ? null : (
+                <Tooltip label={sendTitle} side="top" suppressed={learnerChrome}>
                   <button
                     type="button"
                     onClick={handleSendButtonClick}
@@ -1648,11 +1663,12 @@ export default memo(function ChatComposer({
                     />
                   </button>
                 </Tooltip>
+                )}
               </div>
             </div>
           </div>
         </div>
-        {trayMode || (resourceCatalog && resourceSelection && onResourceSelectionChange) || trayCreate || answerMode || partnerLinks || trayEnd ? (
+        {!learnerChrome && (trayMode || (resourceCatalog && resourceSelection && onResourceSelectionChange) || trayCreate || answerMode || partnerLinks || trayEnd) ? (
           <ComposerTray
             controls={controls}
             placement={hasMessages || docked ? "up" : "down"}

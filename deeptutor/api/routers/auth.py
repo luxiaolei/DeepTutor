@@ -349,6 +349,10 @@ class AuthStatusResponse(BaseModel):
     avatar: str = ""
     preset: AccountPreset | None = None
     learning_policy: dict | None = None
+    # Primary-age learners need a parent tap before the first turn of a sitting.
+    session_start: dict | None = None
+    # Profile age when the account has one. The maker UI uses it with age_band.
+    learner_age: int | None = None
 
 
 class UserInfo(BaseModel):
@@ -737,6 +741,13 @@ def _learning_surface_for_path(
     # /api/settings would also open catalog writes on the same router (#1222).
     if method.upper() == "GET" and normalized == "/api/settings/llm-options":
         return "chat"
+    # The parent tap that starts a learner sitting. Exact path only: the rest
+    # of /api/multi-user is account administration and stays denied.
+    if method.upper() == "POST" and normalized == "/api/multi-user/session-start":
+        return "chat"
+    # Learner read-aloud. Exact path only: speech-to-text stays denied.
+    if method.upper() == "POST" and normalized == "/api/voice/tts":
+        return "chat"
     return ""
 
 
@@ -890,6 +901,16 @@ async def auth_status(
         # what clients need to render the scoped experience.
         if learning_policy is not None and preset != "learner":
             preset = "learner"
+    session_start = None
+    learner_age = None
+    if payload is not None and learning_policy is not None:
+        from deeptutor.multi_user.session_gate import session_start_status
+        from deeptutor.services.auth import get_learner_profile
+
+        session_start = session_start_status(payload.user_id, learning_policy)
+        profile = get_learner_profile(payload.username)
+        age = profile.get("age") if isinstance(profile, dict) else None
+        learner_age = age if isinstance(age, int) and not isinstance(age, bool) else None
     return AuthStatusResponse(
         enabled=True,
         authenticated=payload is not None,
@@ -900,6 +921,8 @@ async def auth_status(
         avatar=avatar,
         preset=preset,
         learning_policy=learning_policy,
+        session_start=session_start,
+        learner_age=learner_age,
     )
 
 

@@ -3718,7 +3718,7 @@
   "Create an ordinary account with the default workspace behavior.": "Ein normales Konto mit dem Standard-Workspace-Verhalten erstellen.",
   "Learning policy": "Lernrichtlinie",
   "Enable learning policy": "Lernrichtlinie aktivieren",
-  "Teacher persona; Chat and Immersive Reading only": "Lehrer-Persona; nur Chat und Immersive Reading",
+  "Teacher persona; Chat and Immersive Reading only": "Zaowu-Persona; Chat, Visualisieren und Immersives Lesen",
   "Age band": "Altersgruppe",
   "Teacher": "Lehrkraft",
   "Modes": "Modi",
@@ -6406,5 +6406,11 @@
   "Availability refreshed. This parser is still unavailable; check the installation and startup logs, then retry.": "Verfügbarkeit aktualisiert. Dieser Parser ist weiterhin nicht verfügbar; prüfe Installation und Startprotokolle und versuche es erneut.",
   "language.portuguese": "Portugiesisch",
   "language.japanese": "Japanisch",
-  "language.turkish": "Türkçe"
+  "language.turkish": "Türkçe",
+  "Zaowu": "Zaowu",
+  "Chat · Visualize · Immersive Reading": "Chat · Visualisieren · Immersives Lesen",
+  "Confirm this session": "Diese Sitzung bestätigen",
+  "What shall we make?": "What shall we make? Pick one, or say it.",
+  "We are thinking together…": "Wir denken zusammen…",
+  "We thought of it": "Fertig gedacht"
 }

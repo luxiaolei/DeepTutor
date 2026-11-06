@@ -61,6 +61,15 @@ from deeptutor.api.routers.auth import _learning_surface_for_path
         ("/api/dashboard/learning-library/materials-private", "GET", ""),
         ("/api/partners", "GET", ""),
         ("/api/memory/overview", "GET", ""),
+        # Parent-on-device session start is part of chat. The rest of this
+        # router, including the guardian confirm route, stays denied.
+        ("/api/multi-user/session-start", "POST", "chat"),
+        ("/api/multi-user/session-start", "GET", ""),
+        ("/api/voice/tts", "POST", "chat"),
+        ("/api/voice/tts", "GET", ""),
+        ("/api/voice/stt", "POST", ""),
+        ("/api/multi-user/learners/learner-1/session-start", "POST", ""),
+        ("/api/multi-user/admin/resources", "GET", ""),
         ("", "GET", ""),
     ],
 )
@@ -253,6 +262,46 @@ def test_fastapi_guard_denies_kb_diagnostics_but_allows_browsing(monkeypatch) ->
     client = TestClient(app)
     assert client.get("/api/knowledge-bases/health").status_code == 403
     assert client.get("/api/knowledge-bases/kb1").json() == {"name": "kb1"}
+
+
+def test_learner_can_post_session_start_without_403(mu_isolated_root, seed_user, monkeypatch):
+    """The parent-start button is a learner chat action, not an admin route.
+
+    POST /api/multi-user/session-start used to miss the surface map, so the
+    learning guard answered 403 and the empty chat never left the confirm card.
+    """
+    from deeptutor.api.routers import multi_user
+    import deeptutor.api.routers.auth as auth_router
+    from deeptutor.api.routers.auth import require_learning_surface
+    from deeptutor.multi_user.grants import learner_grant, save_grant
+    from deeptutor.multi_user.identity import set_preset
+    from deeptutor.services.auth import TokenPayload
+
+    seed_user("bootstrap-admin")
+    learner = seed_user("child")
+    assert set_preset("child", "learner")
+    save_grant(learner["id"], learner_grant(learner["id"]))
+    token = TokenPayload(username="child", role="user", user_id=learner["id"])
+    monkeypatch.setattr(auth_router, "AUTH_ENABLED", True)
+    monkeypatch.setattr(
+        auth_router, "decode_token", lambda raw: token if raw == "learner-token" else None
+    )
+
+    app = FastAPI()
+    app.include_router(
+        multi_user.router,
+        prefix="/api/multi-user",
+        dependencies=[Depends(require_learning_surface)],
+    )
+    client = TestClient(app)
+    headers = {"Authorization": "Bearer learner-token"}
+    started = client.post("/api/multi-user/session-start", headers=headers)
+    assert started.status_code == 200, started.text
+    assert started.json()["session_start"] == {"required": True, "confirmed": True}
+
+    denied = client.get("/api/multi-user/admin/resources", headers=headers)
+    assert denied.status_code == 403
+    assert denied.json()["detail"] == "This learning account cannot use the requested server surface."
 
 
 def test_put_restrictions_flips_standard_preset_to_learner(

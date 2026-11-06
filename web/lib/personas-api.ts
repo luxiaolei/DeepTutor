@@ -8,9 +8,16 @@ export type PersonaSource = "user" | "admin";
 
 export interface PersonaInfo {
   name: string;
+  /** Short label such as 造物. Falls back to ``name`` when a preset has none. */
+  title?: string;
   description: string;
   source: PersonaSource;
   read_only: boolean;
+}
+
+export function personaLabel(persona: { name: string; title?: string }): string {
+  const title = persona.title?.trim();
+  return title || persona.name;
 }
 
 export interface PersonaDetail extends PersonaInfo {
@@ -35,12 +42,15 @@ function normalizeSource(raw: unknown): PersonaSource {
 
 function normalizeInfo(item: {
   name?: unknown;
+  title?: unknown;
   description?: unknown;
   source?: unknown;
   read_only?: unknown;
 }): PersonaInfo {
+  const title = String(item?.title ?? "").trim();
   return {
     name: String(item?.name ?? ""),
+    title: title || undefined,
     description: String(item?.description ?? ""),
     source: normalizeSource(item?.source),
     read_only: Boolean(item?.read_only),

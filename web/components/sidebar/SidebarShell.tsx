@@ -19,6 +19,7 @@ import { useAppShell } from "@/context/AppShellContext";
 import { ChevronsLeft, ChevronsRight, PanelLeftClose, Search, SquarePen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useChatWorkspaces } from "@/hooks/useChatWorkspaces";
+import { useAuthStatus } from "@/hooks/useAuthStatus";
 
 import { useSidebarDrawer } from "@/components/layout/AppShell";
 import { useDevice } from "@/hooks/useDevice";
@@ -122,6 +123,7 @@ export function SidebarShell({
   onOrganizeSession,
   footerSlot,
 }: SidebarShellProps) {
+  const learnerHome = Boolean(useAuthStatus().learningPolicy);
   const categoryNav = useCategoryNavigation();
   const router = useRouter();
   const { t } = useTranslation();
@@ -136,7 +138,7 @@ export function SidebarShell({
   // Inside the mobile drawer the icon-only rail is pointless — the panel is
   // already hidden when you don't want it, so it always opens fully expanded
   // regardless of the persisted desktop preference.
-  const collapsed = sidebarCollapsed && !isMobile;
+  const collapsed = sidebarCollapsed && !isMobile && !learnerHome;
   const resize = useSidebarResize(collapsed || isMobile, initialWidth, widthStorageKey);
 
   // The account links live in the workspace menu, which always shows them in
@@ -167,6 +169,10 @@ export function SidebarShell({
   // sees the current category list; the listener itself is installed once.
   const hotkeys = useRef<(event: KeyboardEvent) => void>(() => {});
   const handleHotkey = (event: KeyboardEvent) => {
+    if (learnerHome && (matchesShortcut(event, SHORTCUTS.search) || matchesShortcut(event, SHORTCUTS.newChat))) {
+      event.preventDefault();
+      return;
+    }
     if (matchesShortcut(event, SHORTCUTS.search)) {
       event.preventDefault();
       setPaletteOpen((open) => !open);
@@ -304,8 +310,8 @@ export function SidebarShell({
         {/* The open sidebar's header, stood on end: the workspace (with its
             menu of settings and account), the way back out, then search. */}
         {bodySlot ? (
-          <Link href={brandHref} prefetch={false} aria-label="DeepTutor" className="dt-rail-brand">
-            <Image src="/brand/color-logo.png" alt="DeepTutor" width={22} height={22} className="h-[22px] w-[22px] rounded-md" />
+          <Link href={brandHref} prefetch={false} aria-label={learnerHome ? t("Zaowu") : "DeepTutor"} className="dt-rail-brand">
+            <Image src="/brand/color-logo.png" alt={learnerHome ? t("Zaowu") : "DeepTutor"} width={22} height={22} className="h-[22px] w-[22px] rounded-md" />
           </Link>
         ) : (
           <WorkspaceMenu compact accountSlot={renderedFooter} onNavigate={() => drawer?.close()} />
@@ -340,7 +346,7 @@ export function SidebarShell({
           {bodySlot ? bodySlot(true) : <CategoryBody nav={categoryNav} collapsed sessions={null} />}
         </div>
 
-        {footerOverride ? footerOverride(true) : (
+        {footerOverride ? footerOverride(true) : learnerHome ? null : (
           <div className="dt-rail-foot">
             <Tooltip label={t("navigation.newChat")} side="right" shortcut={SHORTCUTS.newChat}>
               <Link prefetch={false} href="/chat" onClick={handleHomeClick} aria-label={t("navigation.newChat")} className="dt-nav-icon">
@@ -365,11 +371,14 @@ export function SidebarShell({
           <Link href={brandHref} prefetch={false} className="group flex items-center gap-1.5">
             <Image
               src="/brand/color-logo.png"
-              alt="DeepTutor"
+              alt={learnerHome ? t("Zaowu") : "DeepTutor"}
               width={22}
               height={22}
               className="h-[22px] w-[22px] transition-transform duration-200 group-hover:scale-105"
             />
+            {learnerHome ? (
+              <span className="text-[15px] font-medium tracking-tight text-[var(--foreground)]">{t("Zaowu")}</span>
+            ) : (
             <Image
               src="/brand/color-word.png"
               alt="DeepTutor"
@@ -378,6 +387,7 @@ export function SidebarShell({
               priority
               className="h-[22px] w-auto transition-transform duration-200 group-hover:scale-105"
             />
+            )}
           </Link>
           {/* The rail is a desktop affordance; in the drawer the scrim and the
               top-bar toggle already own "make this go away". */}
@@ -392,6 +402,8 @@ export function SidebarShell({
       ) : (
         <div className="dt-sidebar-header">
           <WorkspaceMenu accountSlot={renderedFooter} onNavigate={() => drawer?.close()} />
+          {learnerHome ? null : (
+            <>
           <Tooltip label={t("navigation.search")} side="bottom" shortcut={SHORTCUTS.search}>
             <button
               type="button"
@@ -415,6 +427,8 @@ export function SidebarShell({
               <ChevronsLeft size={17} strokeWidth={1.6} />
             </button>
           </Tooltip>
+            </>
+          )}
         </div>
       )}
 
@@ -431,7 +445,7 @@ export function SidebarShell({
       </div>
 
       {/* Secondary nav + footer */}
-      {footerOverride ? footerOverride(false) : (
+      {footerOverride ? footerOverride(false) : learnerHome ? null : (
         <div className="dt-sidebar-footer">
           <Tooltip label={t("navigation.newChat")} side="top" shortcut={SHORTCUTS.newChat} as="div" className="block w-full">
             <Link prefetch={false} href="/chat" onClick={handleHomeClick} className="dt-new-conversation">

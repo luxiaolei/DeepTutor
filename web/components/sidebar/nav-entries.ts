@@ -63,14 +63,13 @@ export const PRIMARY_NAV: NavEntry[] = [
   },
   { href: '/space', label: 'Learning Space', icon: LayoutGrid, tooltipKey: 'Space tooltip' },
   {
-    href: '/calendar', label: 'Calendar', icon: CalendarDays, surfaces: ['chat'],
+    href: '/calendar', label: 'Calendar', icon: CalendarDays,
   },
   {
     href: '/kanban',
     label: 'Task Board',
     icon: ListTodo,
     tooltipKey: 'kanban.intro',
-    surfaces: ['chat'],
   },
   {
     href: '/co-writer',

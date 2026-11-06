@@ -3795,7 +3795,7 @@
   "Create an ordinary account with the default workspace behavior.": "Create an ordinary account with the default workspace behavior.",
   "Learning policy": "Learning policy",
   "Enable learning policy": "Enable learning policy",
-  "Teacher persona; Chat and Immersive Reading only": "Teacher persona; Chat and Immersive Reading only",
+  "Teacher persona; Chat and Immersive Reading only": "Zaowu maker persona; Chat, Visualize, and Immersive Reading",
   "Age band": "Age band",
   "Teacher": "Teacher",
   "Modes": "Modes",
@@ -6406,5 +6406,11 @@
   "Reset learning text": "Reset learning text",
   "language.portuguese": "Portuguese",
   "language.japanese": "Japanese",
-  "language.turkish": "Türkçe"
+  "language.turkish": "Türkçe",
+  "Zaowu": "Zaowu",
+  "Chat · Visualize · Immersive Reading": "Chat · Visualize · Immersive Reading",
+  "Confirm this session": "Confirm this session",
+  "What shall we make?": "What shall we make? Pick one, or say it.",
+  "We are thinking together…": "Let's think together…",
+  "We thought of it": "Ready"
 }

@@ -133,6 +133,12 @@ class MemoryCoordinator:
             self._wake_event_waiters(lease.turn_id)
             return True
 
+    async def session_turn_id(self, session_id: str) -> str | None:
+        async with self._lock:
+            turn_id = self._session_turns.get(session_id)
+            lease = self._turn_leases.get(turn_id or "")
+            return turn_id if self._active(lease) else None
+
     async def get_lease(self, turn_id: str) -> TurnLease | None:
         async with self._lock:
             lease = self._turn_leases.get(turn_id)

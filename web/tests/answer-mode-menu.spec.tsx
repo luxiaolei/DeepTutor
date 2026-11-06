@@ -42,6 +42,18 @@ it('hands the turn to a partner or an agent, and takes it back', () => {
   expect(onChange).toHaveBeenLastCalledWith(null)
 })
 
+it('names a locked maker persona instead of Default', () => {
+  render(
+    <AnswerModeMenu
+      placement="down"
+      persona={{ value: '', locked: 'zaowu', onChange: vi.fn() }}
+    />,
+  )
+  expect(screen.getByRole('button', { name: /Preferences.*Zaowu/ })).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /Preferences/ }))
+  expect(screen.queryByRole('option', { name: 'Default' })).not.toBeInTheDocument()
+})
+
 it('keeps asking partners apart from handing over, with the way to manage them', () => {
   const onPartner = vi.fn()
   const onGroup = vi.fn()

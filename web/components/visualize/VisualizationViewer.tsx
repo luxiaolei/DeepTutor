@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { Code2, Copy, Check, ExternalLink, Maximize2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Mermaid } from "@/components/Mermaid";
-import { prepareIframeHtml } from "@/lib/iframe-html";
+import { learnerPreviewHtml, prepareIframeHtml } from "@/lib/iframe-html";
 import {
   isManimResult,
   type VisualizeCanvasResult,
@@ -115,12 +115,15 @@ function ChartJsRenderer({ config }: { config: string }) {
   );
 }
 
-function HtmlRenderer({ html }: { html: string }) {
+function HtmlRenderer({ html, compact = false }: { html: string; compact?: boolean }) {
   const { t } = useTranslation();
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(560);
+  const [height, setHeight] = useState(compact ? 160 : 560);
 
-  const prepared = useMemo(() => prepareIframeHtml(html || ""), [html]);
+  const prepared = useMemo(
+    () => prepareIframeHtml(compact ? learnerPreviewHtml(html || "") : html || ""),
+    [html, compact],
+  );
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -145,12 +148,15 @@ function HtmlRenderer({ html }: { html: string }) {
         typeof data.height === "number" &&
         Number.isFinite(data.height)
       ) {
-        setHeight(Math.min(2400, Math.max(240, Math.ceil(data.height) + 8)));
+        const next = Math.ceil(data.height) + 8;
+        // The frame follows the artwork, the caption, and the action button.
+        // A 320px cap left 「转一下」 below the frame edge.
+        setHeight(compact ? Math.min(1200, Math.max(160, next)) : Math.min(2400, Math.max(240, next)));
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [compact]);
 
   const handleOpenInNewTab = () => {
     try {
@@ -173,6 +179,7 @@ function HtmlRenderer({ html }: { html: string }) {
 
   return (
     <div className="relative w-full">
+      {compact ? null : (
       <button
         type="button"
         onClick={handleOpenInNewTab}
@@ -181,12 +188,14 @@ function HtmlRenderer({ html }: { html: string }) {
         <ExternalLink size={10} strokeWidth={1.8} />
         {t("Open in new tab")}
       </button>
+      )}
       <iframe
         ref={iframeRef}
         title={t("HTML visualization")}
         sandbox="allow-scripts"
         className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)]"
-        style={{ minHeight: 320, height }}
+        scrolling={compact ? "no" : undefined}
+        style={{ height, overflow: compact ? "hidden" : undefined }}
       />
     </div>
   );
@@ -439,7 +448,7 @@ function SvgRenderer({ svg }: { svg: string }) {
   );
 }
 
-function CanvasVisualization({ result }: { result: VisualizeCanvasResult }) {
+function CanvasVisualization({ result, compact = false }: { result: VisualizeCanvasResult; compact?: boolean }) {
   const { t } = useTranslation();
   if (result.renderer.target === "iframe") {
     return <PluginIframeRenderer result={result} />;
@@ -453,7 +462,7 @@ function CanvasVisualization({ result }: { result: VisualizeCanvasResult }) {
     return <Mermaid chart={result.code.content} />;
   }
   if (renderer === "html") {
-    return <HtmlRenderer html={result.code.content} />;
+    return <HtmlRenderer html={result.code.content} compact={compact} />;
   }
   if (renderer === "chartjs") {
     return <ChartJsRenderer config={result.code.content} />;
@@ -510,8 +519,11 @@ function visualizationLabel(result: VisualizeCanvasResult): string {
 
 export default function VisualizationViewer({
   result,
+  quiet = false,
 }: {
   result: VisualizeResult;
+  /** Learner view: the picture only, no code tools or format label. */
+  quiet?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -569,7 +581,7 @@ export default function VisualizationViewer({
             : "overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background)] p-4"
         }`}
       >
-        {supportsFullscreen && (
+        {supportsFullscreen && !quiet && (
           <button
             type="button"
             onClick={() => setFullscreen(true)}
@@ -579,10 +591,11 @@ export default function VisualizationViewer({
             {t("Fullscreen")}
           </button>
         )}
-        <CanvasVisualization result={result} />
+        <CanvasVisualization result={result} compact={quiet} />
       </div>
 
-      {/* Toolbar */}
+      {quiet ? null : (
+      <>
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -630,6 +643,8 @@ export default function VisualizationViewer({
         <p className="text-[11px] text-[var(--muted-foreground)]">
           {t("Review")}: {result.review.review_notes}
         </p>
+      )}
+      </>
       )}
 
       {/* Fullscreen overlay — rendered via portal: the message bubble sits

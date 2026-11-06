@@ -3795,7 +3795,7 @@
   "Create an ordinary account with the default workspace behavior.": "创建使用默认工作区行为的普通账户。",
   "Learning policy": "学习策略",
   "Enable learning policy": "启用学习策略",
-  "Teacher persona; Chat and Immersive Reading only": "教师人格；仅可用 Chat 和沉浸阅读",
+  "Teacher persona; Chat and Immersive Reading only": "造物人设；聊天、可视化与沉浸阅读",
   "Age band": "年龄段",
   "Teacher": "教师",
   "Modes": "模式",
@@ -6406,5 +6406,11 @@
   "Reset learning text": "重置学习文字",
   "language.portuguese": "葡萄牙语",
   "language.japanese": "日语",
-  "language.turkish": "Türkçe"
+  "language.turkish": "Türkçe",
+  "Zaowu": "造物",
+  "Chat · Visualize · Immersive Reading": "聊天 · 可视化 · 沉浸阅读",
+  "Confirm this session": "确认开始这一次",
+  "What shall we make?": "想做什么？点一个。",
+  "We are thinking together…": "我们一起想想…",
+  "We thought of it": "想好了"
 }

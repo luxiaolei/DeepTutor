@@ -24,6 +24,7 @@ import {
   type GuardianReport,
   type GuardianRestrictions,
 } from "@/lib/guardian-api";
+import { confirmLearnerSessionStart } from "@/lib/zaowu-api";
 
 type BusyAction =
   | "loading"
@@ -31,6 +32,7 @@ type BusyAction =
   | "restrictions"
   | "credentials"
   | "revoke"
+  | "session"
   | null;
 type ConfirmAction = "credentials" | "revoke" | null;
 
@@ -324,7 +326,20 @@ export default function GuardianSettingsPage() {
                   <SlidersHorizontal className="h-4 w-4" />
                   {t("Learning restrictions")}
                 </h3>
-
+                <button
+                  type="button"
+                  disabled={busy !== null || !selectedRelationship}
+                  onClick={() => {
+                    if (!selectedRelationship) return;
+                    setBusy("session");
+                    void confirmLearnerSessionStart(selectedRelationship.learner_user_id)
+                      .catch(() => undefined)
+                      .finally(() => setBusy(null));
+                  }}
+                  className="rounded-md border border-[var(--border)] px-2.5 py-1 text-xs disabled:opacity-50"
+                >
+                  {t("Confirm this session")}
+                </button>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="text-xs">

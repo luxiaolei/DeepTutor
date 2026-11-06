@@ -833,7 +833,15 @@ class AgenticLoopPipeline:
         lookup_get = getattr(self.tool_lookup, "get", None)
         if callable(lookup_get) and lookup_get("workspace_export") is not None:
             composed.append("workspace_export")
-        return list(dict.fromkeys(composed))
+        composed = list(dict.fromkeys(composed))
+        from deeptutor.multi_user.learning_access import (
+            current_learning_policy,
+            restrict_learner_tools,
+        )
+
+        if current_learning_policy() is not None:
+            return restrict_learner_tools(composed)
+        return composed
 
     def _mastery_nav_available(self, context: UnifiedContext) -> bool:
         """Whether this turn should be able to point at a mastery topic.

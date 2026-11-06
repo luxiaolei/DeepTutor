@@ -24,6 +24,7 @@ import {
   getPersona,
   listPersonas,
   updatePersona,
+  personaLabel,
   type PersonaInfo,
 } from "@/lib/personas-api";
 
@@ -321,7 +322,7 @@ export default function PersonasSection() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="truncate text-[14px] font-semibold tracking-tight text-[var(--foreground)]">
-                            {persona.name}
+                            {personaLabel(persona)}
                           </span>
                           {persona.source === "admin" ? (
                             <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">

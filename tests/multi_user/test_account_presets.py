@@ -91,9 +91,9 @@ def test_learner_preset_expands_to_a_conservative_grant(preset_client):
     assert grant["exec_enabled"] is False
     assert grant["learning_policy"] == {
         "age_band": "9-12",
-        "locked_persona": "teacher",
-        "allowed_capabilities": ["chat", "immersive_reading"],
-        "default_capability": "immersive_reading",
+        "locked_persona": "zaowu",
+        "allowed_capabilities": ["chat", "visualize", "immersive_reading"],
+        "default_capability": "chat",
         "allowed_surfaces": ["chat", "reading"],
         "reading": {
             "allow_upload": False,
@@ -192,8 +192,12 @@ def test_auth_status_returns_the_effective_learning_policy(preset_client):
     )
 
     assert response.status_code == 200
-    assert response.json()["preset"] == "learner"
-    assert response.json()["learning_policy"]["default_capability"] == ("immersive_reading")
+    body = response.json()
+    assert body["preset"] == "learner"
+    assert body["learning_policy"]["locked_persona"] == "zaowu"
+    assert body["learning_policy"]["default_capability"] == "chat"
+    assert body["session_start"]["required"] is True
+    assert body["session_start"]["confirmed"] is False
 
 
 @pytest.mark.parametrize("preset", ["standard", "custom"])

@@ -60,9 +60,12 @@ export const CATEGORIES = [
 export function useCategoryNavigation() {
   const pathname = usePathname()
   const { learningPolicy } = useAuthStatus()
-  const categories = CATEGORIES.filter(item =>
-    navVisibleUnderPolicy(item.href, learningPolicy?.allowedSurfaces ?? null)
-  )
+  // A learner has no shelf tabs. The adult list only runs when there is no
+  // policy, and that branch has already narrowed `learningPolicy` away, so
+  // the filter is the unrestricted one (`null`), not a second read.
+  const categories = learningPolicy
+    ? []
+    : CATEGORIES.filter(item => navVisibleUnderPolicy(item.href, null))
   const [visited, setVisited] = useState<NavigationCategory[]>([])
   const [selection, setSelection] = useState<{
     pathname: string
@@ -227,12 +230,13 @@ export function CategoryBody({
       aria-labelledby={`category-${nav.category}`}
       className={`dt-category-content ${['partners', 'learning'].includes(nav.category) ? 'dt-category-content-fixed' : ''}`}
     >
-      {nav.category === 'home' && (
+      {nav.category === 'home' && nav.allowedSurfaces === null && (
         <>
           {/* The tutor itself leads the shelf; the tools it works with follow. */}
           {navVisibleUnderPolicy('/chat', nav.allowedSurfaces) && (
             <OverviewRow href="/chat" label={t('navigation.chat')} icon={MessageCircle} />
           )}
+          {nav.allowedSurfaces === null && (
           <Section title={t('navigation.workspace')}>
             {[
               { href: '/calendar', label: 'Calendar', icon: CalendarDays },
@@ -249,6 +253,7 @@ export function CategoryBody({
                 />
               ))}
           </Section>
+          )}
           {sessions}
         </>
       )}

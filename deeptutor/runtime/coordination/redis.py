@@ -275,6 +275,17 @@ class RedisCoordinator:
         except Exception as exc:
             raise CoordinationUnavailableError("Redis turn lease release failed") from exc
 
+    async def session_turn_id(self, session_id: str) -> str | None:
+        key = self._key("lease", "session", session_id)
+        try:
+            values, ttl = await self.client.hgetall(key), await self.client.pttl(key)
+        except Exception as exc:
+            raise CoordinationUnavailableError("Redis session lease lookup failed") from exc
+        if not values or int(ttl) <= 0:
+            return None
+        decoded = {_decode(item_key): _decode(value) for item_key, value in values.items()}
+        return decoded.get("turn_id") or None
+
     async def get_lease(self, turn_id: str) -> TurnLease | None:
         key = self._key("lease", "turn", turn_id)
         try:

@@ -176,6 +176,53 @@ class TurnRequestPreparer:
 
         async def _coordinate_execution(self, execution: _TurnExecution) -> None: ...
 
+    async def _release_talk_for_learner_pick(
+        self,
+        session: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> bool:
+        """Stop an in-flight choice swap so a picture tap can take the session.
+
+        「看别的」 and the opening reply are talk. A tap that arrives while one
+        of them still holds the lease is the child's choice, not a second
+        turn to reject. A turn that is already making their pick is left alone.
+        """
+        from deeptutor.multi_user.learning_access import current_learning_policy
+        from deeptutor.multi_user.maker_gate import _is_real_pick
+
+        if current_learning_policy() is None or self.coordinator is None:
+            return False
+        if not _is_real_pick(str(payload.get("content") or "")):
+            return False
+        scope = f"{self._coordination_scope}:{session['id']}"
+        holder = None
+        lookup = getattr(self.coordinator, "session_turn_id", None)
+        if lookup is not None:
+            holder = await lookup(scope)
+        active = await self.store.get_active_turn(session["id"])
+        turn_id = str(holder or (active or {}).get("id") or "")
+        if not turn_id:
+            return False
+        execution = self._executions.get(turn_id)
+        if execution is not None:
+            prior = str(execution.payload.get("content") or "")
+            if _is_real_pick(prior) or str(execution.capability or "") == "visualize":
+                return False
+            if execution.task is None:
+                execution.preempt_requested = True
+        elif str((active or {}).get("capability") or "") == "visualize":
+            return False
+        await self.cancel_turn(turn_id)
+        for _ in range(50):
+            if await self.coordinator.get_lease(turn_id) is None:
+                current = self._executions.get(turn_id)
+                if current is None or current.task is None or current.task.done():
+                    return True
+            elif execution is not None and execution.task is not None and not execution.task.done():
+                execution.task.cancel()
+            await asyncio.sleep(0.05)
+        return await self.coordinator.get_lease(turn_id) is None
+
     @workspace_writer
     async def start_turn(
         self,
@@ -362,6 +409,19 @@ class TurnRequestPreparer:
             from deeptutor.multi_user.learning_access import apply_learning_policy
 
             payload = apply_learning_policy({**payload, "capability": capability})
+        except PermissionError as exc:
+            raise RuntimeError(str(exc)) from exc
+        try:
+            from deeptutor.multi_user.context import get_current_user
+            from deeptutor.multi_user.learning_access import current_learning_policy
+            from deeptutor.multi_user.session_gate import assert_session_start_allowed
+
+            last_user = await self.store.get_last_message(session["id"], role="user")
+            assert_session_start_allowed(
+                current_learning_policy(),
+                session_has_user_message=last_user is not None,
+                user_id=get_current_user().id,
+            )
         except PermissionError as exc:
             raise RuntimeError(str(exc)) from exc
 
@@ -800,6 +860,13 @@ class TurnRequestPreparer:
                 f"{self._coordination_scope}:{session['id']}",
                 self.owner_id,
             )
+            if lease is None and await self._release_talk_for_learner_pick(session, payload):
+                turn_id = f"turn_{int(time.time() * 1000)}_{uuid.uuid4().hex[:10]}"
+                lease = await self.coordinator.acquire_turn(
+                    turn_id,
+                    f"{self._coordination_scope}:{session['id']}",
+                    self.owner_id,
+                )
             if lease is None:
                 raise RuntimeError("Session already has an active or recovering turn")
         try:
@@ -965,6 +1032,22 @@ class TurnRequestPreparer:
             if replace_assistant_message_id is not None:
                 if not await self.store.delete_message(replace_assistant_message_id):
                     raise RuntimeError("Unable to replace the previous assistant message")
+            if execution.preempt_requested:
+                # A picture tap arrived while this talk turn was still being
+                # admitted. Leave the session free instead of starting it.
+                async with self._lock:
+                    self._executions.pop(turn["id"], None)
+                with contextlib.suppress(Exception):
+                    await self.store.transition_turn(
+                        turn["id"],
+                        "cancelled",
+                        expected_status="running",
+                        error="Superseded by a learner choice",
+                    )
+                if lease is not None and self.coordinator is not None:
+                    with contextlib.suppress(Exception):
+                        await self.coordinator.release_turn(lease)
+                return session, turn
             async with self._lock:
                 from deeptutor.services.workspace.activity import acquire_activity
 

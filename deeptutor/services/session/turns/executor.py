@@ -613,6 +613,7 @@ class TurnExecutor:
 
             current_user = get_current_user()
             learner_profile_prompt = ""
+            account = None
             if not current_user.is_admin:
                 from deeptutor.multi_user.identity import get_user_by_id
                 from deeptutor.multi_user.learner_profile import prompt_block
@@ -631,9 +632,31 @@ class TurnExecutor:
             )
             active_persona = requested_persona if persona_context else ""
 
+            from deeptutor.multi_user.learning_access import current_learning_policy
             from deeptutor.services.skill.runtime import skill_manifest
 
             skills_manifest = skill_manifest()
+            learning_policy = current_learning_policy()
+            if learning_policy is not None:
+                from deeptutor.multi_user.zaowu_guidance import guidance_block, profile_age
+                from deeptutor.services.skill.service import BUILTIN_SKILLS_ROOT, SkillService
+
+                zaowu_skill = SkillService(
+                    root=BUILTIN_SKILLS_ROOT, builtin_root=None
+                ).load_for_context(["zaowu"])
+                if zaowu_skill:
+                    skills_manifest = "\n\n".join(
+                        part for part in (zaowu_skill, skills_manifest) if part
+                    )
+                profile = account[1].get("learner_profile") if account else None
+                density = guidance_block(
+                    profile_age(profile),
+                    str(learning_policy.get("age_band") or ""),
+                )
+                if density:
+                    persona_context = "\n\n".join(
+                        part for part in (persona_context, density) if part
+                    )
 
             # Chat capability uses the lightweight manifest + read_source
             # affordance (no upstream LLM call, no wholesale-dump into the
@@ -952,6 +975,23 @@ class TurnExecutor:
                 )
                 source_manifest_text += task_context
 
+            from deeptutor.multi_user.maker_gate import MAKER_STAGE_KEY, route_maker_turn
+
+            routed_capability, maker_stage = route_maker_turn(
+                requested=str(capability_name or payload.get("capability") or "chat"),
+                history=conversation_history,
+                current_message=raw_user_content,
+                allowed_capabilities=set((learning_policy or {}).get("allowed_capabilities") or []),
+                learning=learning_policy is not None,
+            )
+            turn_config = request_config
+            if routed_capability == "visualize" and (capability_name or "chat") in {"", "chat"}:
+                # The maker screen sends plain chat. The seed still has to
+                # reach the canvas, which only happens through visualize.
+                capability_name = "visualize"
+                payload["capability"] = "visualize"
+                turn_config = {"render_mode": "auto"}
+
             context = UnifiedContext(
                 session_id=session_id,
                 user_message=effective_user_message,
@@ -959,11 +999,15 @@ class TurnExecutor:
                 enabled_tools=payload.get("tools"),
                 # A side chat stays isolated from global memory and every
                 # other auto-mounted built-in.
-                allowed_builtin_tools=[] if side_chat_context else None,
-                active_capability=payload.get("capability"),
+                allowed_builtin_tools=(
+                    []
+                    if side_chat_context
+                    else (["ask_user", "read_skill"] if learning_policy is not None else None)
+                ),
+                active_capability=capability_name or payload.get("capability"),
                 knowledge_bases=payload.get("knowledge_bases", []),
                 attachments=attachments,
-                config_overrides=request_config,
+                config_overrides=turn_config,
                 language=payload.get("language", "en"),
                 memory_context=memory_context,
                 learning_journal_context=learning_journal_context,
@@ -996,6 +1040,7 @@ class TurnExecutor:
                     "history_budget": history_result.budget,
                     "reply_language_fixed": bool(payload.get("_reply_language_fixed")),
                     "turn_id": turn_id,
+                    MAKER_STAGE_KEY: maker_stage or "",
                     "question_followup_context": followup_question_context or {},
                     "side_chat_context": side_chat_context or {},
                     "notebook_references": notebook_references,
@@ -1071,7 +1116,31 @@ class TurnExecutor:
             )
 
             pending_done_event: StreamEvent | None = None
-            async for event in self.turn_engine.execute(context):
+            if maker_stage in {"detail", "tried"}:
+                from deeptutor.multi_user.maker_gate import detail_choice_reply, tried_choice_reply
+
+                reply = (
+                    tried_choice_reply(raw_user_content)
+                    if maker_stage == "tried"
+                    else detail_choice_reply(raw_user_content)
+                )
+
+                async def _detail_events():
+                    yield StreamEvent(
+                        type=StreamEventType.CONTENT,
+                        source="zaowu",
+                        content=reply,
+                    )
+                    yield StreamEvent(
+                        type=StreamEventType.DONE,
+                        source="zaowu",
+                        metadata={"status": "completed"},
+                    )
+
+                event_source = _detail_events()
+            else:
+                event_source = self.turn_engine.execute(context)
+            async for event in event_source:
                 if event.type == StreamEventType.SESSION:
                     continue
                 if event.type == StreamEventType.DONE:
@@ -1305,6 +1374,14 @@ class TurnExecutor:
             await self._publish_live_event(execution, pending_done_event)
             stream_done_sent = True
             await self._flush_buffered_events(execution)
+            # The answer is already on screen. Drop the session lease before
+            # the title model runs, so a follow-up such as 「看别的」 is not
+            # rejected as "session already has an active turn" and painted as
+            # an interrupt. Title generation only writes the session title.
+            if execution.lease is not None and self.coordinator is not None:
+                with contextlib.suppress(Exception):
+                    await self.coordinator.release_turn(execution.lease)
+                execution.lease = None
             if not is_regenerate and turn_status == "completed":
                 # Title generation is post-turn metadata. Keep it after DONE
                 # so the composer and duration clock stop as soon as the

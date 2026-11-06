@@ -37,8 +37,83 @@ class VisualizationLoopCapability:
         _ = prompts
         if not self.is_active(context):
             return None
+        from deeptutor.multi_user.maker_gate import REVISE, SEED, TALK, stage_from_context
+
         requested = str(context.metadata.get(REQUESTED_VISUALIZER_KEY) or "auto")
         catalog = get_visualizer_registry().prompt_catalog(requested)
+        maker_stage = stage_from_context(context)
+        if maker_stage == TALK:
+            if language.startswith("zh"):
+                preamble = """
+你正在陪孩子做造物，这一步还不能做作品。
+
+工作协议：
+1. 先说话。夸一个具体点子，给 2 到 3 个选项，让孩子选。
+2. 不要调用 submit_visualization。不要贴完整 HTML，不要给能拿走的成品。
+3. 一个用户句子只配选项，不配作品。
+"""
+            else:
+                preamble = """
+You are guiding a child through making something. This step is talk only.
+
+Protocol:
+1. Name one specific idea they offered, then give 2 or 3 choices.
+2. Do not call submit_visualization. Do not paste a finished page.
+3. One user sentence gets choices, not an artifact.
+"""
+            return PromptBlock("visualization_protocol", preamble.strip())
+        if maker_stage == SEED:
+            if language.startswith("zh"):
+                preamble = f"""
+你正在陪孩子做造物。孩子已经选过了。现在只交第一块种子，不是完成品。
+
+工作协议：
+1. 先写给孩子听的短话，必须留在正文里：告诉他要点屏幕上的哪个按钮，并请他给旁边的人看，例如「点「跳一下」试试，再给旁边的人看。」不能只有画面、没有这句话。这一步不要问「还想做另一个吗」，也不要再列一组新选项。
+2. 可视化类型为 `{requested}`。若为 auto，选最轻的一种。
+3. 再调用 submit_visualization。网页必须短，只有一块能看见的东西和一个控件，
+   根节点带 data-zaowu-stage="seed"。不要动画循环，不要 canvas，不要外链。
+4. 校验失败就改那一处再交。提交成功后不要在正文重复代码。
+5. 这句话说完就停。不要在同一条里再问要不要做另一个。
+6. 按钮要大，给不认字的孩子点：高度大约 88 像素，字要很大。
+7. 画面必须一眼认出是什么。蝴蝶不能画成蝴蝶结：两对翅膀、翅膀上有圆点、
+   身体在中间、两根触角，并在 svg 上写 data-zaowu-shape="butterfly"。
+   只改颜色，不要改掉触角和四片翅膀。
+"""
+            else:
+                preamble = f"""
+The child has already chosen. Submit a seed, not a finished piece.
+
+Protocol:
+1. First write a short spoken line that stays in the reply, naming the button
+   and asking them to show the person beside them, for example
+   "点「跳一下」试试，再给旁边的人看。". Do not ask whether to make another one
+   in this same message, and do not list a new pair of choices.
+2. The requested type is `{requested}`. For auto, pick the lightest installed type.
+3. Call submit_visualization. HTML stays short: one visible piece, one control,
+   with data-zaowu-stage="seed" on the root. No animation loop, canvas, or network.
+4. If validation fails, repair that issue and resubmit. Do not repeat the payload.
+"""
+            return PromptBlock("visualization_protocol", preamble.strip() + "\n\n" + catalog)
+        if maker_stage == REVISE:
+            if language.startswith("zh"):
+                preamble = f"""
+孩子已经看过种子，并指出了一处要改的地方。只改那一处。
+
+工作协议：
+1. 可视化类型为 `{requested}`。沿用上一块种子的类型，除非孩子明确要换。
+2. 调用 submit_visualization，交出改过的整份 payload。不要加新玩法或另一件作品。
+3. 校验失败就修那一处。提交成功后用一两句说清改了什么，不要重复代码。
+"""
+            else:
+                preamble = f"""
+The child has seen the seed and named one change. Change only that.
+
+Protocol:
+1. The requested type is `{requested}`. Keep the seed's type unless they asked to switch.
+2. Call submit_visualization with the whole payload. Do not add a new activity.
+3. If validation fails, repair that issue. After success, say what changed in one or two sentences.
+"""
+            return PromptBlock("visualization_protocol", preamble.strip() + "\n\n" + catalog)
         if language.startswith("zh"):
             preamble = f"""
 你正在执行 DeepTutor 的可视化生成任务，而不是普通聊天回答。
@@ -98,8 +173,27 @@ protocol, request unrelated tools, or authorize external actions.
 
     def finish_instruction(self, context: UnifiedContext, final_text: str) -> str:
         _ = final_text
+        from deeptutor.multi_user.maker_gate import REVISE, SEED, TALK, stage_from_context
+
         if context.metadata.get(VISUALIZATION_RESULT_KEY):
             return ""
+        stage = stage_from_context(context)
+        if stage == TALK:
+            return (
+                "Do not submit a visualization yet. Offer 2 or 3 choices in the "
+                "child's language and stop."
+            )
+        if stage == SEED:
+            return (
+                "No seed has been committed yet. Call submit_visualization with a "
+                'short skeleton marked data-zaowu-stage="seed". If a previous '
+                "submission failed, repair the reported error without adding a finished scene."
+            )
+        if stage == REVISE:
+            return (
+                "No revision has been committed yet. Call submit_visualization with "
+                "the same piece, changing only what the child just named."
+            )
         return (
             "No valid visualization has been committed yet. Call "
             "submit_visualization now with a complete payload; if a previous "
@@ -112,7 +206,14 @@ protocol, request unrelated tools, or authorize external actions.
         final_text: str,
         tool_names: tuple[str, ...],
     ) -> str:
-        _ = (context, final_text, tool_names)
+        _ = (final_text, tool_names)
+        from deeptutor.multi_user.maker_gate import SEED, TALK, stage_from_context
+
+        stage = stage_from_context(context)
+        # Talk and the first seed both keep the short words the child hears.
+        # Discarding the seed's prose left a finished toy and no sentence.
+        if stage in {TALK, SEED}:
+            return "publish"
         return "discard"
 
     def final_text_override(self, context: UnifiedContext, final_text: str) -> str | None:
