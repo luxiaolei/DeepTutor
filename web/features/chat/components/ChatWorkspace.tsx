@@ -1269,6 +1269,22 @@ export default function ChatWorkspace() {
   const awaitingUserReplyRef = useRef(awaitingUserReply);
   awaitingUserReplyRef.current = awaitingUserReply;
   useEffect(() => {
+    if (!learnerHome || state.isStreaming) return;
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const frame = requestAnimationFrame(() => {
+      const rows = container.querySelectorAll("[data-maker-choice-row]");
+      const last = rows[rows.length - 1];
+      if (!(last instanceof HTMLElement)) return;
+      const clear = 72;
+      const overflow =
+        last.getBoundingClientRect().bottom -
+        (container.getBoundingClientRect().bottom - clear);
+      if (overflow > 8) container.scrollTop += overflow;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [learnerHome, state.isStreaming, state.messages, messagesContainerRef]);
+  useEffect(() => {
     if (!awaitingUserCard) return;
     shouldAutoScrollRef.current = true;
     // One frame later: the card has to be laid out before the bottom it
@@ -2891,7 +2907,10 @@ export default function ChatWorkspace() {
                             const maskImage =
                               "linear-gradient(to bottom, transparent 0px, #000 32px, #000 calc(100% - 40px), transparent 100%)";
                             return {
-                              paddingBottom: "48px",
+                              // Learners get extra room under the latest picture
+                              // pair so a short window does not leave those cards
+                              // in the bottom fade, against the composer.
+                              paddingBottom: learnerHome ? "96px" : "48px",
                               WebkitMaskImage: maskImage,
                               maskImage,
                             };

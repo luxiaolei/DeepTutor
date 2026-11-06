@@ -1630,7 +1630,7 @@ export default memo(function ChatComposer({
                   </Tooltip>
                 ) : null}
                 {learnerChrome && sendState === "streaming" ? null : (
-                <Tooltip label={sendTitle} side="top">
+                <Tooltip label={sendTitle} side="top" suppressed={learnerChrome}>
                   <button
                     type="button"
                     onClick={handleSendButtonClick}

@@ -302,7 +302,7 @@ export function MakerChoiceRow({
   useSpokenMakerPrompt(speak, spoken);
   const early = density === "early";
   return (
-    <div className="mt-3 flex w-full flex-col items-center gap-3">
+    <div data-maker-choice-row="true" className="mt-3 flex w-full flex-col items-center gap-3">
       {speak ? <MakerSpeakerButton text={spoken} /> : null}
       <div
         className={

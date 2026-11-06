@@ -20,6 +20,7 @@ import {
   makerInvitesChoice,
   makerShowsPictures,
   withMakerChoiceInvitation,
+  withoutInProgressChoiceLines,
   withoutMakerChoiceLines,
   type ZaowuDensity,
 } from "@/lib/zaowu-home";
@@ -1016,8 +1017,12 @@ export const AssistantMessage = memo(function AssistantMessage({
     onMakerChoice && !isStreaming && !visualizeResult && !askUserPayload
       ? makerChoiceLines(body)
       : [];
-  const answerText = (text: string) =>
-    makerChoices.length > 0 ? withoutMakerChoiceLines(text, makerChoices) : text;
+  const hideStreamingChoices =
+    learnerChrome && makerShowsPictures(makerDensity) && isStreaming;
+  const answerText = (text: string) => {
+    const stripped = makerChoices.length > 0 ? withoutMakerChoiceLines(text, makerChoices) : text;
+    return hideStreamingChoices ? withoutInProgressChoiceLines(stripped) : stripped;
+  };
   // Ages who see picture cards must be asked to tap one. The model often
   // stops after a compliment; the invitation is then inserted for the screen
   // and for read-aloud, instead of waiting for another generation.
@@ -2773,7 +2778,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                 </div>
               );
             })()}
-            {learnerChrome && makerChoiceLines(msg.content).length > 0 && !messageRows.slice(rowIndex + 1).some((row) => row.msg.role === "assistant" && makerChoiceLines(row.msg.content).length > 0) ? (
+            {learnerChrome && !isStreaming && makerChoiceLines(msg.content).length > 0 && !messageRows.slice(rowIndex + 1).some((row) => row.msg.role === "assistant" && makerChoiceLines(row.msg.content).length > 0) ? (
               <button
                 type="button"
                 onClick={() => onRegenerateMessage()}

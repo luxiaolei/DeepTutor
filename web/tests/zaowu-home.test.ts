@@ -20,6 +20,7 @@ import {
   makerSpeaks,
   spokenMakerPrompt,
   withMakerChoiceInvitation,
+  withoutInProgressChoiceLines,
   withoutMakerChoiceLines,
 } from "../lib/zaowu-home";
 import { planMakerSpeech, recentlySpoken } from "../lib/maker-speech";
@@ -68,10 +69,10 @@ test("learner chrome uses the maker name, not the adult defaults", () => {
   assert.equal(
     composerPlaceholder({
       learner: true,
-      maker: "想做什么？点一个，或者说一句。",
+      maker: "想做什么？点一个。",
       adult: "How can I help you today?",
     }),
-    "想做什么？点一个，或者说一句。",
+    "想做什么？点一个。",
   );
   assert.equal(
     composerPlaceholder({
@@ -200,6 +201,12 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(list, /withMakerChoiceInvitation/);
   assert.match(list, /heading=\{choiceProse\}/);
   assert.match(list, /看别的/);
+  assert.match(list, /learnerChrome && !isStreaming && makerChoiceLines/);
+  assert.match(list, /withoutInProgressChoiceLines/);
+  assert.equal(
+    withoutInProgressChoiceLines("会动的小东西真有趣！\n你想先做哪一个？\n1. 会跳的小球\n2. 会转的小风车"),
+    "会动的小东西真有趣！\n你想先做哪一个？",
+  );
   const navigation = readFileSync(
     path.resolve(process.cwd(), "components/sidebar/CategoryNavigation.tsx"),
     "utf8",
@@ -219,6 +226,11 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
   assert.match(workspace, /MAKER_OTHER_CHOICES_PROMPT/);
   assert.match(workspace, /displayUserMessage: false, persistUserMessage: false/);
   assert.match(workspace, /inputPlaceholderCompletion=\{learnerHome \? undefined : askHint\}/);
+  assert.match(workspace, /paddingBottom: learnerHome \? "96px" : "48px"/);
+  assert.match(workspace, /data-maker-choice-row/);
+  assert.match(composer, /suppressed=\{learnerChrome\}/);
+  const zh = readFileSync(path.resolve(process.cwd(), "locales/zh/app.json"), "utf8");
+  assert.match(zh, /"What shall we make\?": "想做什么？点一个。"/);
   assert.match(list, /showModeBadge && !learnerChrome/);
   assert.match(list, /onMakerChoice && !isActiveAssistant/);
   assert.match(list, /snap\?\.persona && !learnerChrome/);
@@ -245,6 +257,7 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
     "utf8",
   );
   const speech = readFileSync(path.resolve(process.cwd(), "lib/maker-speech.ts"), "utf8");
+  assert.match(speech, /if \(current === audio\) notifyFailure\(false\)/);
   assert.doesNotMatch(speech, /speechSynthesis/);
   assert.match(speech, /maker:\s*true/);
   assert.match(speech, /\/api\/voice\/tts/);

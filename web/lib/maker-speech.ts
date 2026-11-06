@@ -110,13 +110,17 @@ export async function speakMaker(text: string): Promise<boolean> {
     audio.load();
     await audio.play();
     URL.revokeObjectURL(unlockUrl);
+    // A later success clears a failure left by an earlier clip. A stale
+    // attempt must not put the failure line back up after this play starts.
+    if (current === audio) notifyFailure(false);
     return true;
   } catch {
     URL.revokeObjectURL(unlockUrl);
-    if (current === audio) current = null;
+    const stillCurrent = current === audio;
+    if (stillCurrent) current = null;
     // A blocked autoplay is not a synthesis failure. The button can retry
     // inside a tap. A failed request must not fall back to the browser voice.
-    if (!clipUrls.has(plan.text)) notifyFailure(true);
+    if (stillCurrent && !clipUrls.has(plan.text)) notifyFailure(true);
     return false;
   }
 }

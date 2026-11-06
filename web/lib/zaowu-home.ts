@@ -211,6 +211,19 @@ export function withoutMakerChoiceLines(text: string, choices: string[]): string
 }
 
 /**
+ * While a choice reply is still being written, drop lines that are already
+ * a numbered option. A child who cannot read should not see `1.` before
+ * the pictures are ready.
+ */
+export function withoutInProgressChoiceLines(text: string): string {
+  const kept = text.split("\n").filter((line) => {
+    if (CHOICE_LINE.test(line)) return false;
+    return !/^\s*\d+\s*[.．。、)）]?\s*$/.test(line);
+  });
+  return kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
  * A picture a child can tap without reading the label. More specific words
  * win, so 「会跳的小球」 is a ball and 「会动的」 stays a motion mark.
  */
