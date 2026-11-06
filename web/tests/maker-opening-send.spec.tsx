@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { MakerChoiceRow } from "@/components/chat/home/MakerChoices";
 import MakerOpening from "@/components/chat/home/MakerOpening";
 
-const speakMaker = vi.hoisted(() => vi.fn(async () => true));
+const speakMaker = vi.hoisted(() => vi.fn(async (_text: string) => true));
 
 vi.mock("@/lib/maker-speech", () => ({
   speakMaker,

@@ -129,6 +129,26 @@ export function learnerStyleLabel(options: {
   return id;
 }
 
+/** The line a listening child needs before picture choices. */
+export const MAKER_CHOICE_INVITATION = "你想先做哪一个？";
+
+/** The reply already asks which picture to tap next. */
+export function makerInvitesChoice(text: string): boolean {
+  return text.includes("先做哪一个");
+}
+
+/**
+ * Picture choices have to invite the next tap even when the model only
+ * praises. The same string is shown above the cards and read aloud.
+ */
+export function withMakerChoiceInvitation(text: string): string {
+  const body = text.trim();
+  if (makerInvitesChoice(body)) return body;
+  if (!body) return MAKER_CHOICE_INVITATION;
+  const gap = /[。！？!?]$/.test(body) ? "" : "。";
+  return `${body}${gap}\n\n${MAKER_CHOICE_INVITATION}`;
+}
+
 /** Short numbered options the maker shell turns into send buttons. */
 export function makerChoiceLines(text: string): string[] {
   const choices: string[] = [];

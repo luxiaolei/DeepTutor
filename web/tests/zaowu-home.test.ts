@@ -10,12 +10,15 @@ import {
   learnerSidebarLabel,
   learnerStyleLabel,
   learnerActivityLabel,
+  MAKER_CHOICE_INVITATION,
   makerChoiceLines,
+  makerInvitesChoice,
   makerOpening,
   makerPicture,
   makerShowsPictures,
   makerSpeaks,
   spokenMakerPrompt,
+  withMakerChoiceInvitation,
   withoutMakerChoiceLines,
 } from "../lib/zaowu-home";
 import { planMakerSpeech, recentlySpoken } from "../lib/maker-speech";
@@ -106,6 +109,17 @@ test("maker chips send a choice and numbered replies become buttons", () => {
   const choices = makerChoiceLines(reply);
   const shown = withoutMakerChoiceLines(reply, choices);
   assert.match(shown, /你想做哪一种/);
+  assert.equal(makerInvitesChoice(shown), false);
+  assert.equal(
+    withMakerChoiceInvitation("会动的小东西很有趣！"),
+    `会动的小东西很有趣！\n\n${MAKER_CHOICE_INVITATION}`,
+  );
+  assert.equal(
+    withMakerChoiceInvitation(`会动的小东西很有趣！${MAKER_CHOICE_INVITATION}`),
+    `会动的小东西很有趣！${MAKER_CHOICE_INVITATION}`,
+  );
+  assert.equal(withMakerChoiceInvitation("  "), MAKER_CHOICE_INVITATION);
+  assert.match(spokenMakerPrompt(withMakerChoiceInvitation("会动的小东西很有趣！"), ["会跳的小球", "会转的小风车"]), /你想先做哪一个/);
   assert.doesNotMatch(shown, /1\./);
   assert.doesNotMatch(shown, /会跳的小球/);
   assert.equal(withoutMakerChoiceLines("普通的 1. 说明，不是选项。", []), "普通的 1. 说明，不是选项。");
@@ -171,7 +185,25 @@ test("youngest maker choices are pictures and a spoken prompt", () => {
     "utf8",
   );
   assert.match(list, /<MakerChoiceRow/);
+  assert.match(list, /withMakerChoiceInvitation/);
+  assert.match(list, /heading=\{choiceProse\}/);
   assert.match(list, /看别的/);
+  const navigation = readFileSync(
+    path.resolve(process.cwd(), "components/sidebar/CategoryNavigation.tsx"),
+    "utf8",
+  );
+  assert.match(navigation, /navVisibleUnderPolicy\(item\.href, null\)/);
+  const pageBar = readFileSync(
+    path.resolve(process.cwd(), "components/sidebar/PageBar.tsx"),
+    "utf8",
+  );
+  assert.match(pageBar, /if \(learningPolicy \|\| !located \|\| isMobile\) return null/);
+  const composer = readFileSync(
+    path.resolve(process.cwd(), "components/chat/home/ChatComposer.tsx"),
+    "utf8",
+  );
+  assert.match(composer, /!learnerChrome && \(controls\?\.voice !== false \|\| recorder\.state !== "idle"\) \? \(/);
+  assert.match(workspace, /learnerHome \? null : \(/);
   assert.match(choices, /ellipse cx="20" cy="28"/);
   assert.match(workspace, /makerDensity=\{learnerHome \? makerDensity : undefined\}/);
   assert.match(workspace, /speakMaker\(/);

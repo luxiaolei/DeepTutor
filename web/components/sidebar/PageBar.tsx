@@ -48,12 +48,14 @@ export function PageBar() {
   const { t } = useTranslation()
   const pathname = usePathname() ?? ''
   const { isMobile } = useDevice()
+  const { learningPolicy } = useAuthStatus()
   const instanceRef = usePageSlotRef('instance')
   const metaRef = usePageSlotRef('meta')
   const actionsRef = usePageSlotRef('actions')
   const located = locatePage(pathname, useShelves())
   // Phones have their own top row; without the bar, headers keep everything.
-  if (!located || isMobile) return null
+  // A learner has no feature crumb and no 「新对话」 switcher.
+  if (learningPolicy || !located || isMobile) return null
   // On the feature page itself the bar is the header; under a detail page
   // it locates it, and the page keeps its own title and meta.
   const exact = located.page.href === pathname

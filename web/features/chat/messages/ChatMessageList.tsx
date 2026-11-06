@@ -15,7 +15,11 @@ import {
 import { MakerChoiceRow, MakerPicture } from "@/components/chat/home/MakerChoices";
 import {
   learnerStyleLabel,
+  MAKER_CHOICE_INVITATION,
   makerChoiceLines,
+  makerInvitesChoice,
+  makerShowsPictures,
+  withMakerChoiceInvitation,
   withoutMakerChoiceLines,
   type ZaowuDensity,
 } from "@/lib/zaowu-home";
@@ -1014,6 +1018,13 @@ export const AssistantMessage = memo(function AssistantMessage({
       : [];
   const answerText = (text: string) =>
     makerChoices.length > 0 ? withoutMakerChoiceLines(text, makerChoices) : text;
+  // Ages who see picture cards must be asked to tap one. The model often
+  // stops after a compliment; the invitation is then inserted for the screen
+  // and for read-aloud, instead of waiting for another generation.
+  const prose = answerText(body);
+  const invitePictureChoice =
+    makerChoices.length > 0 && learnerChrome && makerShowsPictures(makerDensity);
+  const choiceProse = invitePictureChoice ? withMakerChoiceInvitation(prose) : prose;
 
   // Interleaved segments for the default chat surface: the message is laid
   // out in the order it was written — what DeepTutor said it was about to do,
@@ -1335,9 +1346,9 @@ export const AssistantMessage = memo(function AssistantMessage({
             />
           ) : null,
         )
-      ) : answerText(body).trim() ? (
+      ) : choiceProse.trim() ? (
         <AssistantResponse
-          content={answerText(body)}
+          content={choiceProse}
           language={language}
           isStreaming={isStreaming}
           readingMaterialId={readingMaterialId}
@@ -1363,10 +1374,20 @@ export const AssistantMessage = memo(function AssistantMessage({
       askUserPayload ? (
         <AskUserOptions data={askUserPayload} onSubmit={submitReply} />
       ) : null}
+      {invitePictureChoice && useSegmentLayout && !makerInvitesChoice(prose) ? (
+        <AssistantResponse
+          content={MAKER_CHOICE_INVITATION}
+          language={language}
+          isStreaming={false}
+          readingMaterialId={readingMaterialId}
+          readingMaterialRevision={readingMaterialRevision}
+          events={events}
+        />
+      ) : null}
       {makerChoices.length > 0 ? (
         <MakerChoiceRow
           density={makerDensity}
-          heading={answerText(body)}
+          heading={choiceProse}
           choices={makerChoices}
           onPick={(choice) => onMakerChoice?.(choice)}
         />

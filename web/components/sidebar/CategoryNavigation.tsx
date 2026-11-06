@@ -60,11 +60,12 @@ export const CATEGORIES = [
 export function useCategoryNavigation() {
   const pathname = usePathname()
   const { learningPolicy } = useAuthStatus()
+  // A learner has no shelf tabs. The adult list only runs when there is no
+  // policy, and that branch has already narrowed `learningPolicy` away, so
+  // the filter is the unrestricted one (`null`), not a second read.
   const categories = learningPolicy
     ? []
-    : CATEGORIES.filter(item =>
-        navVisibleUnderPolicy(item.href, learningPolicy?.allowedSurfaces ?? null)
-      )
+    : CATEGORIES.filter(item => navVisibleUnderPolicy(item.href, null))
   const [visited, setVisited] = useState<NavigationCategory[]>([])
   const [selection, setSelection] = useState<{
     pathname: string

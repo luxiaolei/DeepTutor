@@ -1576,7 +1576,8 @@ export default memo(function ChatComposer({
 
                 {!learnerChrome && contextBudget ? <ContextBudgetChip budget={contextBudget} /> : null}
 
-                {(controls?.voice !== false || recorder.state !== "idle") && <Tooltip
+                {!learnerChrome && (controls?.voice !== false || recorder.state !== "idle") ? (
+                <Tooltip
                   label={recorder.state === "recording" ? t("Stop recording") : t("Record voice")}
                   description={recorder.error || undefined}
                   side="top"
@@ -1605,7 +1606,8 @@ export default memo(function ChatComposer({
                       <Mic size={16} strokeWidth={1.9} />
                     )}
                   </button>
-                </Tooltip>}
+                </Tooltip>
+                ) : null}
 
                 {/* The thing you press is the thing that's working is the
                     thing you press to stop — one element for the whole turn,

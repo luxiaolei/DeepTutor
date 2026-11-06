@@ -2644,7 +2644,10 @@ export default function ChatWorkspace() {
           >
             {/* 「聊天 / this conversation」 and the conversation's actions go
                 up into the page bar; without one (phones, the classic layout)
-                they stay in this row, which is then all that is left of it. */}
+                they stay in this row, which is then all that is left of it.
+                A learner does not get that row: the 新对话 crumb and the
+                customize / note / activity / conversation icons are adult exits. */}
+            {learnerHome ? null : (
             <div className="dt-chat-head mx-auto flex w-full max-w-[960px] flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-6 pt-3 pb-0">
               <PageBarSlot name="instance" className="group/title min-w-0 flex flex-1 items-center gap-2">
                 {titleInBar ? (
@@ -2765,6 +2768,7 @@ export default function ChatWorkspace() {
                 />
               </PageBarSlot>
             </div>
+            )}
             <div className="flex w-full flex-1 min-h-0 flex-col">
               {sessionLoading || sessionLoadFailed ? (
                 <div className="flex w-full flex-1 min-h-0 justify-center px-6">
